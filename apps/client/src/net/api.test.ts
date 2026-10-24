@@ -1,5 +1,6 @@
 import { PROTOCOL_VERSION } from "@nf/shared";
 import { describe, expect, it, vi } from "vitest";
+import { ALICE_STATE } from "../test-helpers.ts";
 import { createApi } from "./api.ts";
 
 const SERVER = "http://server.test";
@@ -47,6 +48,39 @@ describe("createApi", () => {
       throw new TypeError("Failed to fetch");
     });
     expect(await offline.me()).toEqual({ ok: false, reason: "network_error" });
+  });
+
+  it("loads the game state", async () => {
+    const api = createApi(SERVER, async () => jsonResponse(200, { state: ALICE_STATE }));
+    expect(await api.getState()).toEqual({ ok: true, value: ALICE_STATE });
+  });
+
+  it("sends actions with a fresh requestId, or the one given for a retry", async () => {
+    const fetchImpl = vi.fn(async () => jsonResponse(200, { state: ALICE_STATE }));
+    const api = createApi(SERVER, fetchImpl);
+    const action = { type: "move.to" as const, payload: { x: 1, y: 2 } };
+
+    await api.sendAction(action);
+    await api.sendAction(action);
+    await api.sendAction(action, "retry-me");
+
+    const bodies = fetchImpl.mock.calls.map(
+      (args) =>
+        JSON.parse(String((args as unknown as [string, RequestInit])[1].body)) as {
+          requestId: string;
+        },
+    );
+    expect(bodies[0]?.requestId).toMatch(/^[0-9a-f-]{36}$/);
+    expect(bodies[0]?.requestId).not.toBe(bodies[1]?.requestId);
+    expect(bodies[2]).toEqual({ requestId: "retry-me", ...action });
+  });
+
+  it("reports rule failures from actions", async () => {
+    const api = createApi(SERVER, async () => jsonResponse(422, { error: "out_of_bounds" }));
+    expect(await api.sendAction({ type: "move.to", payload: { x: 99, y: 0 } })).toEqual({
+      ok: false,
+      reason: "out_of_bounds",
+    });
   });
 
   it("handles empty 204 responses", async () => {

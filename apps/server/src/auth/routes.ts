@@ -1,7 +1,8 @@
 import type { Db } from "@nf/db";
-import { type FailureReason, LoginRequest, SignUpRequest } from "@nf/shared";
-import { type CookieOptions, type Response, Router } from "express";
+import { LoginRequest, SignUpRequest } from "@nf/shared";
+import { type CookieOptions, Router } from "express";
 import { rateLimit } from "express-rate-limit";
+import { sendFailure } from "../http/failure.ts";
 import { logIn, signUp } from "./service.ts";
 import {
   deleteSession,
@@ -20,21 +21,6 @@ export type AuthDeps = {
 };
 
 const RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000;
-
-const STATUS: Record<FailureReason, number> = {
-  invalid_input: 400,
-  invalid_credentials: 401,
-  not_authenticated: 401,
-  account_banned: 403,
-  email_taken: 409,
-  name_taken: 409,
-  rate_limited: 429,
-  protocol_mismatch: 426,
-};
-
-function sendFailure(res: Response, reason: FailureReason): void {
-  res.status(STATUS[reason]).json({ error: reason });
-}
 
 /** POST /signup, POST /login, POST /logout, GET /me (mounted at /auth). */
 export function createAuthRouter(deps: AuthDeps): Router {

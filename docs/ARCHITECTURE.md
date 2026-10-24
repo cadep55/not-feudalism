@@ -104,6 +104,7 @@ Plural table names, `snake_case` columns, UUID primary keys and `created_at`/`up
 | `market_orders` | Buy/sell orders: item, price, quantity, side, status |
 | `trades` | Completed trades (audit log) |
 | `kingdoms`, `kingdom_members` | Hierarchy: lord/vassal links, roles, tax rate |
+| `game_actions` | Every action a character sent and the result it got, keyed by `(character_id, request_id)`. Makes retries safe (idempotency) and doubles as an audit log |
 | `events` | Append-only audit log of important game actions (good for debugging cheating and balance) |
 
 Rules for data:

@@ -4,6 +4,7 @@ import express, { type Application, type ErrorRequestHandler } from "express";
 import helmet from "helmet";
 import { pinoHttp } from "pino-http";
 import { type AuthDeps, createAuthRouter } from "../auth/routes.ts";
+import { createGameRouter, type GameDeps } from "../game/routes.ts";
 import type { Logger } from "../logger.ts";
 
 export type HttpDeps = {
@@ -13,6 +14,8 @@ export type HttpDeps = {
   checkDatabase: () => Promise<void>;
   /** Mounts /auth when provided (tests of the base app can leave it out). */
   auth?: AuthDeps;
+  /** Mounts /game when provided. */
+  game?: GameDeps;
 };
 
 /** Installs middleware and HTTP routes. Colyseus adds its matchmaking routes to the same app. */
@@ -51,6 +54,7 @@ export function configureHttp(app: Application, deps: HttpDeps): void {
   });
 
   if (deps.auth) app.use("/auth", createAuthRouter(deps.auth));
+  if (deps.game) app.use("/game", createGameRouter(deps.game));
 
   const handleError: ErrorRequestHandler = (err, req, res, _next) => {
     // Client errors from middleware (bad JSON 400, body too large 413) keep their status.

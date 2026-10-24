@@ -1,5 +1,15 @@
 import { sql } from "drizzle-orm";
-import { index, integer, pgTable, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
+import {
+  index,
+  integer,
+  jsonb,
+  pgTable,
+  primaryKey,
+  text,
+  timestamp,
+  uniqueIndex,
+  uuid,
+} from "drizzle-orm/pg-core";
 
 // Conventions (docs/ARCHITECTURE.md §3): plural table names, snake_case columns,
 // UUID keys, created_at/updated_at everywhere, money and quantities as integers.
@@ -58,4 +68,28 @@ export const characters = pgTable(
     ...timestamps,
   },
   (table) => [uniqueIndex("characters_name_lower_idx").on(sql`lower(${table.name})`)],
+);
+
+/**
+ * Every action a character sent, with the result it got. Keyed by the client's
+ * requestId so a retried request returns the stored result instead of applying
+ * twice (ADR 0002). Also an audit trail for debugging and cheat reports.
+ */
+export const gameActions = pgTable(
+  "game_actions",
+  {
+    characterId: uuid("character_id")
+      .notNull()
+      .references(() => characters.id, { onDelete: "cascade" }),
+    requestId: uuid("request_id").notNull(),
+    type: text("type").notNull(),
+    payload: jsonb("payload").notNull(),
+    // The RuleResult sent back to the client: { ok: true, value } or { ok: false, reason }.
+    result: jsonb("result").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.characterId, table.requestId] }),
+    index("game_actions_created_at_idx").on(table.createdAt),
+  ],
 );

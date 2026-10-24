@@ -67,7 +67,7 @@ Each bullet is about one PR with its tests.
 - [x] **Protocol package:** `PROTOCOL_VERSION`, first Zod message schemas, shared `RuleResult` type (#7)
 - [x] **Auth:** sign-up and login (argon2id, http-only session cookie), rate limiting, and `authenticateCookieHeader` for rooms in Phase 2. Integration tests (#8)
 - [x] **Client shell:** Vite + React + Phaser, login screen, network client with protocol check (#9; WebSocket auto-reconnect arrives with rooms in Phase 2)
-- [ ] **Game API:** `GET /game/state` and `POST /game/actions` (shared schemas and rules, one transaction, idempotent `requestId`, rate limit) (#16)
+- [x] **Game API:** `GET /game/state` and `POST /game/actions` (shared schemas and rules, one transaction, idempotent `requestId`, rate limit) (#16; inventory and jobs join the state in #19)
 - [ ] **Movement and resume:** character on the map, click/keyboard movement, positions saved with bounds and speed checks; reload puts you back where you were (#17)
 - [ ] **E2E in CI:** Playwright sign up → move → reload → still there → log out and in; CI boots the server with Postgres, serves the built client, uploads traces on failure (#18)
 
