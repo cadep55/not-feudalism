@@ -1,4 +1,5 @@
 import type { ItemId } from "../data/items.ts";
+import type { RecipeId } from "../data/recipes.ts";
 import type { NodeId } from "../data/resources.ts";
 
 /**
@@ -29,7 +30,14 @@ export type GatherJob = {
   completesAt: number;
 };
 
-export type Job = GatherJob;
+export type CraftJob = {
+  kind: "craft";
+  recipeId: RecipeId;
+  startedAt: number;
+  completesAt: number;
+};
+
+export type Job = GatherJob | CraftJob;
 
 export type GameState = {
   character: CharacterState;

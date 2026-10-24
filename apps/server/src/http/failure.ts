@@ -14,6 +14,7 @@ const STATUS: Record<FailureReason, number> = {
   too_far_away: 422,
   busy: 409,
   missing_tool: 422,
+  missing_materials: 422,
   rate_limited: 429,
   protocol_mismatch: 426,
 };

@@ -8,7 +8,14 @@ import {
   type ResourceNode,
 } from "@nf/shared";
 import Phaser from "phaser";
-import { jobProgress, nearestAdjacentTile, nodeAt, nodesIn, readyToGather } from "./gathering.ts";
+import {
+  jobProgress,
+  nearestAdjacentTile,
+  nodeAt,
+  nodesIn,
+  readyToGather,
+  walkingCancels,
+} from "./gathering.ts";
 import {
   clampToRegion,
   keyDirection,
@@ -230,7 +237,8 @@ class WorldScene extends Phaser.Scene {
   private stepTo(next: Tile) {
     this.stepping = true;
     // Walking away cancels a gather on the server; hide the bar now rather than on its reply.
-    this.job = null;
+    // A craft keeps going, so its bar keeps filling.
+    if (this.job && walkingCancels(this.job)) this.job = null;
     const [x, y] = this.pixelsOf(next);
     this.tweens.add({
       targets: this.avatar,

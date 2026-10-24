@@ -16,6 +16,7 @@
   },
   "devDependencies": {
     "@nf/config": "workspace:*",
-    "@vitest/coverage-v8": "5.0.3"
+    "@vitest/coverage-v8": "5.0.3",
+    "fast-check": "4.10.2"
   }
 }

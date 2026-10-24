@@ -26,4 +26,14 @@ describe("InventoryPanel", () => {
     );
     expect(screen.getByRole("status")).toHaveTextContent("Gathering wood…");
   });
+
+  it("leaves crafting status to the crafting panel", () => {
+    render(
+      <InventoryPanel
+        inventory={{}}
+        job={{ kind: "craft", recipeId: "rake", startedAt: 0, completesAt: 3_000 }}
+      />,
+    );
+    expect(screen.queryByRole("status")).not.toBeInTheDocument();
+  });
 });

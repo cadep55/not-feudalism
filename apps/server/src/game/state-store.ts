@@ -1,5 +1,13 @@
 import { characters, type DbExecutor, inventories, jobs } from "@nf/db";
-import { type GameState, type Inventory, ITEM_IDS, isItemId, isNodeId, type Job } from "@nf/shared";
+import {
+  type GameState,
+  type Inventory,
+  ITEM_IDS,
+  isItemId,
+  isNodeId,
+  isRecipeId,
+  type Job,
+} from "@nf/shared";
 import { and, eq, isNull } from "drizzle-orm";
 
 // Moves game state between Postgres rows and the plain objects the shared rules use.
@@ -48,16 +56,29 @@ export async function loadStateForUpdate(db: DbExecutor, characterId: string): P
 }
 
 function toJob(row: typeof jobs.$inferSelect): Job {
-  const nodeId = (row.payload as { nodeId?: unknown }).nodeId;
-  if (row.kind !== "gather" || typeof nodeId !== "string" || !isNodeId(nodeId)) {
-    throw new Error(`Job ${row.id} has an unknown kind or payload`);
+  const payload = row.payload as { nodeId?: unknown; recipeId?: unknown };
+  const times = { startedAt: row.startedAt.getTime(), completesAt: row.completesAt.getTime() };
+  if (row.kind === "gather" && typeof payload.nodeId === "string" && isNodeId(payload.nodeId)) {
+    return { kind: "gather", nodeId: payload.nodeId, ...times };
   }
-  return {
-    kind: "gather",
-    nodeId,
-    startedAt: row.startedAt.getTime(),
-    completesAt: row.completesAt.getTime(),
-  };
+  if (
+    row.kind === "craft" &&
+    typeof payload.recipeId === "string" &&
+    isRecipeId(payload.recipeId)
+  ) {
+    return { kind: "craft", recipeId: payload.recipeId, ...times };
+  }
+  throw new Error(`Job ${row.id} has an unknown kind or payload`);
+}
+
+/** What a job stores in its payload column, besides kind and times. */
+function jobPayload(job: Job): Record<string, string> {
+  switch (job.kind) {
+    case "gather":
+      return { nodeId: job.nodeId };
+    case "craft":
+      return { recipeId: job.recipeId };
+  }
 }
 
 /** Writes whatever differs between `before` and `after`. */
@@ -113,7 +134,7 @@ export async function saveState(
     await db.insert(jobs).values({
       characterId,
       kind: after.job.kind,
-      payload: { nodeId: after.job.nodeId },
+      payload: jobPayload(after.job),
       startedAt: new Date(after.job.startedAt),
       completesAt: new Date(after.job.completesAt),
     });

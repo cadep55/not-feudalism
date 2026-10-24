@@ -15,6 +15,7 @@ export const FAILURE_REASONS = [
   "too_far_away",
   "busy",
   "missing_tool",
+  "missing_materials",
   "protocol_mismatch",
 ] as const;
 

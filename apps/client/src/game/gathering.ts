@@ -71,6 +71,14 @@ export function jobProgress(job: Job, now: number): number {
   return Math.min(Math.max((now - job.startedAt) / total, 0), 1);
 }
 
+/**
+ * Whether taking a step ends this job. Walking away cancels a gather on the
+ * server; a craft keeps going wherever the character goes.
+ */
+export function walkingCancels(job: Job): boolean {
+  return job.kind === "gather";
+}
+
 /** Milliseconds to wait before re-reading state so the server has finished the job. */
 export function refreshDelay(job: Job, now: number): number {
   return Math.max(job.completesAt - now, 0) + JOB_SETTLE_MS;
