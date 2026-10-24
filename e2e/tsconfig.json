@@ -1,0 +1,7 @@
+{
+  "extends": "@nf/config/tsconfig.node.json",
+  "compilerOptions": {
+    "lib": ["es2024", "dom"]
+  },
+  "include": ["tests", "playwright.config.ts"]
+}

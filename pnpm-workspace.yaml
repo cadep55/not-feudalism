@@ -1,6 +1,7 @@
 packages:
   - apps/*
   - packages/*
+  - e2e
 
 # Pin exact versions when adding dependencies (AGENTS.md: no casual upgrades)
 savePrefix: ""

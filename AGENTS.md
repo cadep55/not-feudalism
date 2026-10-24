@@ -53,7 +53,7 @@ packages/
   shared/        Game rules, data tables, types, Zod schemas (pure, no I/O)
   db/            Drizzle schema, migrations (generated, never hand-edited), seed
   config/        Shared tsconfig presets (base, node, browser)
-e2e/             Playwright end-to-end tests                   (planned)
+e2e/             Playwright end-to-end tests (real browser, server and database)
 docs/            Architecture, conventions, plans, decision records
 .github/         CI workflows, PR/issue templates, CODEOWNERS, Dependabot
 docker-compose.yml   Local Postgres (Redis later)
@@ -69,6 +69,7 @@ pnpm dev              # start Postgres (Docker), migrate, then server + client w
 pnpm check            # lint + typecheck + unit tests; must pass before every PR
 pnpm test             # unit tests (no database needed)
 pnpm test:integration # integration tests (*.int.test.ts) against Postgres; run pnpm db:up first
+pnpm test:e2e         # Playwright in a real browser against pnpm dev (first time: pnpm --filter @nf/e2e exec playwright install chromium)
 pnpm typecheck        # TypeScript in every package
 pnpm lint             # Biome lint + format check
 pnpm format           # Biome auto-fix: format, organise imports, safe lint fixes
@@ -79,7 +80,6 @@ pnpm db:generate      # create a migration after changing packages/db/src/schema
 pnpm db:seed          # load development seed data (players Alice and Bob)
 pnpm db:reset         # wipe the local database, then migrate and seed
 pnpm db:studio        # browse the database in Drizzle Studio
-pnpm test:e2e         # Playwright end-to-end tests                                  (planned)
 ```
 
 Integration tests are named `*.int.test.ts`, so `pnpm test` skips them. In CI they run in a separate job with a Postgres service.
