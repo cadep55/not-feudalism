@@ -47,6 +47,8 @@ A persistent online medieval world where each player starts as a peasant or smal
 - Art style: pixel art, 2D illustrated or 3D?
 - Which game engine and language (for example Godot, Unity, or JavaScript for the web)?
 
+Proposed answers to all of these are in [ADR 0001](docs/decisions/0001-tech-stack.md). The full setup plan is in [docs/INFRASTRUCTURE_PLAN.md](docs/INFRASTRUCTURE_PLAN.md).
+
 ## Roadmap
 
 ### Phase 1: Prototype
