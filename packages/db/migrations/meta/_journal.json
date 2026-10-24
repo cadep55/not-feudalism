@@ -36,6 +36,13 @@
       "when": 1792878350973,
       "tag": "0004_character_facing",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1792878949685,
+      "tag": "0005_storehouse_items",
+      "breakpoints": true
     }
   ]
 }

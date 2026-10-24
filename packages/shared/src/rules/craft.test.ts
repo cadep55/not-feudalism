@@ -1,5 +1,6 @@
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
+import { CARRY_LIMIT } from "../data/buildings.ts";
 import { ITEM_IDS, type ItemId } from "../data/items.ts";
 import { RECIPE_IDS, RECIPES } from "../data/recipes.ts";
 import type { GameState, Inventory } from "../game/state.ts";
@@ -23,6 +24,7 @@ function stateWith(inventory: Inventory, overrides: Partial<GameState> = {}): Ga
       facing: "s",
     },
     inventory,
+    storage: {},
     job: null,
     ...overrides,
   };
@@ -111,11 +113,14 @@ describe("item conservation", () => {
         const recipe = RECIPES[recipeId];
         const started = startCraft(stateWith(inventory), recipeId, NOW);
         if (!started.ok) {
-          // Refused: nothing may change, and it must really have been short of something.
+          // Refused: it must really have been short of an input, or unable to carry the output.
           const short = Object.entries(recipe.inputs).some(
             ([item, need]) => (inventory[item as ItemId] ?? 0) < need,
           );
-          expect(short).toBe(true);
+          const handsFull =
+            (inventory[recipe.output.item] ?? 0) + recipe.output.quantity > CARRY_LIMIT;
+          expect(started.reason).toBe(short ? "missing_materials" : "hands_full");
+          expect(short || handsFull).toBe(true);
           return;
         }
         const finished = resolveJob(started.value, started.value.job?.completesAt ?? NOW);

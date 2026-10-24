@@ -1,4 +1,7 @@
 import {
+  BUILDINGS,
+  type Building,
+  type BuildingId,
   type CharacterState,
   type Direction,
   isRegionId,
@@ -9,6 +12,13 @@ import {
   type ResourceNode,
 } from "@nf/shared";
 import Phaser from "phaser";
+import {
+  approachTile,
+  buildingAt,
+  buildingsIn,
+  readyAtBuilding,
+  turnTowardBuilding,
+} from "./buildings.ts";
 import { arrowPlacement, facingAfterStep, turnBeforeGather } from "./facing.ts";
 import {
   jobProgress,
@@ -51,6 +61,8 @@ export type WorldOptions = {
   startGather: (nodeId: NodeId) => void;
   /** Asks the server to turn the character in place; resolves true once it accepts. */
   turn: (facing: Direction) => Promise<boolean>;
+  /** The character stands beside the storehouse facing it: show the storehouse panel. */
+  openStorehouse: () => void;
 };
 
 /** What the React side holds on to: tell the world about job changes, tear it down. */
@@ -58,6 +70,9 @@ export type World = {
   setJob: (job: Job | null) => void;
   destroy: () => void;
 };
+
+/** Something the character walks up to and then uses: a resource node or a building. */
+type Target = { kind: "node"; id: NodeId } | { kind: "building"; id: BuildingId };
 
 type MovementKeys = Record<"up" | "down" | "left" | "right", Phaser.Input.Keyboard.Key[]>;
 
@@ -67,6 +82,7 @@ type MovementKeys = Record<"up" | "down" | "left" | "right", Phaser.Input.Keyboa
  * the server, snapping back if it refuses. The character faces the way it last
  * stepped, shown by a faint arrow. Clicking a resource node walks next to it,
  * turns toward it if needed, then asks the server to start gathering.
+ * Clicking the storehouse does the same, then opens the storehouse panel.
  */
 class WorldScene extends Phaser.Scene {
   private readonly options: WorldOptions;
@@ -81,10 +97,10 @@ class WorldScene extends Phaser.Scene {
   private lastSent: Tile;
   private lastSentAt = Number.NEGATIVE_INFINITY;
   private inFlight = false;
-  /** The node to gather at once the character stands next to it. */
-  private gatherTarget: NodeId | null = null;
-  /** The node waiting on a turn before gathering; cleared if the player does anything else. */
-  private turningToward: NodeId | null = null;
+  /** What to gather at or use once the character stands next to it. */
+  private target: Target | null = null;
+  /** The target waiting on a turn before use; cleared if the player does anything else. */
+  private turningToward: Target | null = null;
   private job: Job | null;
   private avatar!: Phaser.GameObjects.Container;
   private arrow!: Phaser.GameObjects.Graphics;
@@ -119,10 +135,14 @@ class WorldScene extends Phaser.Scene {
       }
     }
 
-    // Nodes sit above the grass and below the character (drawing order sets depth).
+    // Nodes and buildings sit above the grass and below the character (drawing order sets depth).
     const nodes = this.add.graphics();
     for (const id of nodesIn(this.options.character.region)) {
       drawNode(nodes, RESOURCE_NODES[id]);
+    }
+    const buildings = this.add.graphics();
+    for (const id of buildingsIn(this.options.character.region)) {
+      this.drawBuilding(buildings, BUILDINGS[id]);
     }
 
     // A faint chevron at the tile's edge marks the character's front.
@@ -163,16 +183,23 @@ class WorldScene extends Phaser.Scene {
     this.input.on("pointerdown", (pointer: Phaser.Input.Pointer) => {
       const tile = tileAt(pointer.worldX, pointer.worldY, TILE, this.region);
       if (!tile) return;
-      const nodeId = nodeAt(tile, this.options.character.region);
+      const { region } = this.options.character;
+      const nodeId = nodeAt(tile, region);
+      const buildingId = buildingAt(tile, region);
       this.turningToward = null;
-      if (!nodeId) {
-        this.gatherTarget = null;
+      if (nodeId) {
+        const approach = nearestAdjacentTile(this.position, RESOURCE_NODES[nodeId], this.region);
+        this.target = approach ? { kind: "node", id: nodeId } : null;
+        this.destination = approach;
+      } else if (buildingId && BUILDINGS[buildingId].kind === "storehouse") {
+        const approach = approachTile(this.position, BUILDINGS[buildingId], this.region);
+        this.target = approach ? { kind: "building", id: buildingId } : null;
+        this.destination = approach;
+      } else {
+        // Open ground, or a building with nothing to do yet (buildings don't block walking).
+        this.target = null;
         this.destination = tile;
-        return;
       }
-      const approach = nearestAdjacentTile(this.position, RESOURCE_NODES[nodeId], this.region);
-      this.gatherTarget = approach ? nodeId : null;
-      this.destination = approach;
     });
 
     const keyboard = this.input.keyboard;
@@ -198,7 +225,7 @@ class WorldScene extends Phaser.Scene {
     const usingKeys = direction.x !== 0 || direction.y !== 0;
     if (usingKeys) {
       this.destination = null;
-      this.gatherTarget = null;
+      this.target = null;
       this.turningToward = null;
     }
 
@@ -228,48 +255,81 @@ class WorldScene extends Phaser.Scene {
       this.send(time);
     }
 
-    if (
-      this.gatherTarget &&
-      this.destination === null &&
-      readyToGather({
-        position: this.position,
-        lastSent: this.lastSent,
-        inFlight: this.inFlight,
-        stepping: this.stepping,
-        node: RESOURCE_NODES[this.gatherTarget],
-      })
-    ) {
-      const nodeId = this.gatherTarget;
-      this.gatherTarget = null;
-      this.gatherAt(nodeId);
+    const target = this.target;
+    if (target && this.destination === null && this.readyFor(target)) {
+      this.target = null;
+      this.use(target);
     }
 
     this.drawProgress();
   }
 
-  /** Turn toward the node first when the server doesn't have us facing it, then gather. */
-  private gatherAt(nodeId: NodeId) {
-    const toward = turnBeforeGather(this.position, RESOURCE_NODES[nodeId], this.serverFacing);
+  /** Standing still next to the target, with the server agreeing where we stand. */
+  private readyFor(target: Target): boolean {
+    const settled = {
+      position: this.position,
+      lastSent: this.lastSent,
+      inFlight: this.inFlight,
+      stepping: this.stepping,
+    };
+    return target.kind === "node"
+      ? readyToGather({ ...settled, node: RESOURCE_NODES[target.id] })
+      : readyAtBuilding({ ...settled, building: BUILDINGS[target.id] });
+  }
+
+  /**
+   * Turn toward the target first when the server doesn't have us facing it,
+   * then gather at the node or open the storehouse.
+   */
+  private use(target: Target) {
+    const act =
+      target.kind === "node"
+        ? () => this.options.startGather(target.id)
+        : () => this.options.openStorehouse();
+    const toward =
+      target.kind === "node"
+        ? turnBeforeGather(this.position, RESOURCE_NODES[target.id], this.serverFacing)
+        : turnTowardBuilding(this.position, BUILDINGS[target.id], this.serverFacing);
     if (toward === null) {
-      this.options.startGather(nodeId);
+      act();
       return;
     }
     const before = this.facing;
     const at = this.position;
-    this.turningToward = nodeId;
+    this.turningToward = target;
     this.setFacing(toward);
     this.options.turn(toward).then((accepted) => {
       // The player clicked elsewhere, walked off or got snapped back meanwhile.
-      const stillWaiting = this.turningToward === nodeId && samePlace(this.position, at);
-      if (this.turningToward === nodeId) this.turningToward = null;
+      const stillWaiting = this.turningToward === target && samePlace(this.position, at);
+      if (this.turningToward === target) this.turningToward = null;
       if (!accepted) {
         if (stillWaiting) this.setFacing(before);
         return;
       }
       if (!stillWaiting) return;
       this.serverFacing = toward;
-      this.options.startGather(nodeId);
+      act();
     });
+  }
+
+  /** A labelled square over the footprint until we have pixel art. */
+  private drawBuilding(g: Phaser.GameObjects.Graphics, building: Building) {
+    const style = BUILDING_STYLES[building.kind];
+    const left = building.x * TILE;
+    const top = building.y * TILE;
+    const width = building.width * TILE;
+    const height = building.height * TILE;
+    g.fillStyle(style.fill, 1);
+    g.fillRect(left + 2, top + 2, width - 4, height - 4);
+    g.lineStyle(3, style.outline, 1);
+    g.strokeRect(left + 2, top + 2, width - 4, height - 4);
+    this.add
+      .text(left + width / 2, top + height / 2, style.label, {
+        fontFamily: "Georgia, serif",
+        fontSize: "11px",
+        color: "#f5e9c8",
+      })
+      .setOrigin(0.5);
   }
 
   private setFacing(facing: Direction) {
@@ -335,7 +395,7 @@ class WorldScene extends Phaser.Scene {
     this.tweens.killTweensOf(this.avatar);
     this.stepping = false;
     this.destination = null;
-    this.gatherTarget = null;
+    this.target = null;
     this.turningToward = null;
     if (facing) this.setFacing(facing);
     this.position = tile;
@@ -349,6 +409,13 @@ class WorldScene extends Phaser.Scene {
     return [tile.x * TILE + TILE / 2, tile.y * TILE + TILE / 2];
   }
 }
+
+/** Plain coloured squares per kind until we have pixel art. */
+const BUILDING_STYLES: Record<Building["kind"], { fill: number; outline: number; label: string }> =
+  {
+    storehouse: { fill: 0x7a4f2a, outline: 0x3d2510, label: "Storehouse" },
+    house: { fill: 0xa0472f, outline: 0x5c2414, label: "House" },
+  };
 
 /** Simple shapes per kind until we have pixel art. */
 function drawNode(g: Phaser.GameObjects.Graphics, node: ResourceNode) {

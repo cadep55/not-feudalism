@@ -31,6 +31,7 @@ function stateAt(
       facing: directionBetween(position, toward) ?? "s",
     },
     inventory: {},
+    storage: {},
     job: null,
     ...overrides,
   };

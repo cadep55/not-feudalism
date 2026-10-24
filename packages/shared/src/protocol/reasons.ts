@@ -17,6 +17,10 @@ export const FAILURE_REASONS = [
   "busy",
   "missing_tool",
   "missing_materials",
+  "hands_full",
+  "not_at_storehouse",
+  "not_enough_items",
+  "storehouse_full",
   "protocol_mismatch",
 ] as const;
 

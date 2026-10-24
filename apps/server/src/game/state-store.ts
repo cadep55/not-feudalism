@@ -1,4 +1,4 @@
-import { characters, type DbExecutor, inventories, jobs } from "@nf/db";
+import { characters, type DbExecutor, inventories, jobs, storehouseItems } from "@nf/db";
 import {
   DEFAULT_FACING,
   type GameState,
@@ -27,14 +27,8 @@ export async function loadStateForUpdate(db: DbExecutor, characterId: string): P
     .for("update");
   if (!row) throw new Error(`Character ${characterId} not found`);
 
-  const items = await db
-    .select({ itemId: inventories.itemId, quantity: inventories.quantity })
-    .from(inventories)
-    .where(eq(inventories.characterId, characterId));
-  const inventory: Inventory = {};
-  for (const { itemId, quantity } of items) {
-    if (isItemId(itemId)) inventory[itemId] = quantity;
-  }
+  const inventory = await loadItems(db, inventories, characterId);
+  const storage = await loadItems(db, storehouseItems, characterId);
 
   const [active] = await db
     .select()
@@ -64,8 +58,56 @@ export async function loadStateForUpdate(db: DbExecutor, characterId: string): P
       facing: isDirection(row.facing) ? row.facing : DEFAULT_FACING,
     },
     inventory,
+    storage,
     job,
   };
+}
+
+/** The two item-count tables: what a character carries, and what its storehouse holds. */
+type ItemTable = typeof inventories | typeof storehouseItems;
+
+async function loadItems(
+  db: DbExecutor,
+  table: ItemTable,
+  characterId: string,
+): Promise<Inventory> {
+  const rows = await db
+    .select({ itemId: table.itemId, quantity: table.quantity })
+    .from(table)
+    .where(eq(table.characterId, characterId));
+  const items: Inventory = {};
+  for (const { itemId, quantity } of rows) {
+    if (isItemId(itemId)) items[itemId] = quantity;
+  }
+  return items;
+}
+
+/** Writes changed counts; rows exist only while a count is above zero. */
+async function saveItems(
+  db: DbExecutor,
+  table: ItemTable,
+  characterId: string,
+  before: Inventory,
+  after: Inventory,
+  now: Date,
+): Promise<void> {
+  for (const itemId of ITEM_IDS) {
+    const quantity = after[itemId] ?? 0;
+    if (quantity === (before[itemId] ?? 0)) continue;
+    if (quantity > 0) {
+      await db
+        .insert(table)
+        .values({ characterId, itemId, quantity })
+        .onConflictDoUpdate({
+          target: [table.characterId, table.itemId],
+          set: { quantity, updatedAt: now },
+        });
+    } else {
+      await db
+        .delete(table)
+        .where(and(eq(table.characterId, characterId), eq(table.itemId, itemId)));
+    }
+  }
 }
 
 /** The job a row describes, or null when its kind or payload isn't one this version knows. */
@@ -118,23 +160,8 @@ export async function saveState(
       .where(eq(characters.id, characterId));
   }
 
-  for (const itemId of ITEM_IDS) {
-    const quantity = after.inventory[itemId] ?? 0;
-    if (quantity === (before.inventory[itemId] ?? 0)) continue;
-    if (quantity > 0) {
-      await db
-        .insert(inventories)
-        .values({ characterId, itemId, quantity })
-        .onConflictDoUpdate({
-          target: [inventories.characterId, inventories.itemId],
-          set: { quantity, updatedAt: now },
-        });
-    } else {
-      await db
-        .delete(inventories)
-        .where(and(eq(inventories.characterId, characterId), eq(inventories.itemId, itemId)));
-    }
-  }
+  await saveItems(db, inventories, characterId, before.inventory, after.inventory, now);
+  await saveItems(db, storehouseItems, characterId, before.storage, after.storage, now);
 
   const jobChanged = JSON.stringify(before.job) !== JSON.stringify(after.job);
   if (jobChanged && before.job) {

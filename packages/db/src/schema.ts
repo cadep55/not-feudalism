@@ -143,3 +143,21 @@ export const jobs = pgTable(
       .where(sql`${table.resolvedAt} is null`),
   ],
 );
+
+/** What each character's storehouse holds (Phase 1: one storehouse per character's world). */
+export const storehouseItems = pgTable(
+  "storehouse_items",
+  {
+    characterId: uuid("character_id")
+      .notNull()
+      .references(() => characters.id, { onDelete: "cascade" }),
+    // Item IDs come from packages/shared/src/data/items.ts.
+    itemId: text("item_id").notNull(),
+    quantity: integer("quantity").notNull(),
+    ...timestamps,
+  },
+  (table) => [
+    primaryKey({ columns: [table.characterId, table.itemId] }),
+    check("storehouse_items_quantity_positive", sql`${table.quantity} > 0`),
+  ],
+);

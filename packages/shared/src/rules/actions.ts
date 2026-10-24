@@ -5,6 +5,7 @@ import { startCraft } from "./craft.ts";
 import { startGather } from "./gather.ts";
 import { resolveJob } from "./jobs.ts";
 import { moveTo } from "./move.ts";
+import { type StorehouseFailure, storeItems, takeItems } from "./storehouse.ts";
 
 /** Every reason a game rule may refuse an action. */
 export type ActionFailure =
@@ -14,7 +15,8 @@ export type ActionFailure =
   | "not_facing"
   | "busy"
   | "missing_tool"
-  | "missing_materials";
+  | "missing_materials"
+  | StorehouseFailure;
 
 /**
  * Applies one action to a game state. Pure: the server loads the state, calls
@@ -51,5 +53,9 @@ export function applyAction(
       return startGather(current, action.payload.nodeId, now);
     case "craft.start":
       return startCraft(current, action.payload.recipeId, now);
+    case "storehouse.store":
+      return storeItems(current, action.payload.item, action.payload.quantity);
+    case "storehouse.take":
+      return takeItems(current, action.payload.item, action.payload.quantity);
   }
 }

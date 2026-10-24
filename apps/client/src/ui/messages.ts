@@ -1,4 +1,4 @@
-import type { FailureReason } from "@nf/shared";
+import { CARRY_LIMIT, type FailureReason, STOREHOUSE_LIMIT } from "@nf/shared";
 
 /** Player-facing text for every failure the server can report. */
 export const FAILURE_MESSAGES: Record<FailureReason | "network_error", string> = {
@@ -16,6 +16,10 @@ export const FAILURE_MESSAGES: Record<FailureReason | "network_error", string> =
   busy: "You're busy with another job.",
   missing_materials: "You don't have the materials for that.",
   missing_tool: "You need a rake to harvest wheat.",
+  hands_full: `Your hands are full (${CARRY_LIMIT} max). Store some in the storehouse.`,
+  not_at_storehouse: "Stand next to the storehouse and face it.",
+  not_enough_items: "You don't have that many.",
+  storehouse_full: `The storehouse is full (${STOREHOUSE_LIMIT} max).`,
   protocol_mismatch: "A new version of the game is out. Please refresh the page.",
   network_error: "Can't reach the server. Is it running?",
 };

@@ -9,12 +9,21 @@ describe("InventoryPanel", () => {
     expect(screen.queryByRole("status")).not.toBeInTheDocument();
   });
 
-  it("lists each item the character has with its count", () => {
+  it("lists each item the character has with its count out of the carry limit", () => {
     render(<InventoryPanel inventory={{ stone: 2, wood: 3, wheat: 0 }} job={null} />);
     const rows = screen.getAllByRole("listitem");
-    expect(rows.map((row) => row.textContent)).toEqual(["Wood3", "Stone2"]);
+    expect(rows.map((row) => row.textContent)).toEqual(["Wood 3/5", "Stone 2/5"]);
+    expect(rows[0]?.querySelector(".count")).toHaveTextContent("3/5");
     expect(within(rows[0] as HTMLElement).getByText("Wood")).toBeInTheDocument();
     expect(screen.queryByText(/Empty/)).not.toBeInTheDocument();
+  });
+
+  it("marks items the character can't carry more of", () => {
+    render(<InventoryPanel inventory={{ wood: 5, stone: 1 }} job={null} />);
+    const [wood, stone] = screen.getAllByRole("listitem");
+    expect(wood).toHaveTextContent("Wood 5/5");
+    expect(wood).toHaveClass("full");
+    expect(stone).not.toHaveClass("full");
   });
 
   it("shows what is being gathered", () => {

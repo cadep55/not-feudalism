@@ -1,3 +1,13 @@
+export {
+  BUILDING_IDS,
+  BUILDINGS,
+  type Building,
+  type BuildingId,
+  CARRY_LIMIT,
+  covers,
+  footprint,
+  STOREHOUSE_LIMIT,
+} from "./data/buildings.ts";
 export { ITEM_IDS, ITEMS, type ItemId, isItemId } from "./data/items.ts";
 export { MOVE_SLACK_TILES, WALK_SPEED_TILES_PER_SECOND } from "./data/movement.ts";
 export { isRecipeId, RECIPE_IDS, RECIPES, type Recipe, type RecipeId } from "./data/recipes.ts";
@@ -46,6 +56,7 @@ export {
   GatherStart,
   MoveTo,
   parseClientMessage,
+  StorehouseTransfer,
   Turn,
 } from "./protocol/messages.ts";
 export { FAILURE_REASONS, type FailureReason, isFailureReason } from "./protocol/reasons.ts";
@@ -57,3 +68,10 @@ export { startGather } from "./rules/gather.ts";
 export { addItems, hasItems, removeItems } from "./rules/inventory.ts";
 export { resolveJob } from "./rules/jobs.ts";
 export { maxWalkTiles, moveTo, tileDistance } from "./rules/move.ts";
+export {
+  atStorehouse,
+  canCarry,
+  type StorehouseFailure,
+  storeItems,
+  takeItems,
+} from "./rules/storehouse.ts";

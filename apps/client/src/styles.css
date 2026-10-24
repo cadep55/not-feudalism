@@ -215,6 +215,43 @@ button:disabled {
   cursor: not-allowed;
 }
 
+.inventory li.full .count {
+  color: var(--error);
+}
+
+.storehouse {
+  transition: box-shadow 0.2s;
+}
+
+.storehouse.highlighted {
+  box-shadow:
+    0 0 0 3px #c9a227,
+    0 4px 12px #0005;
+}
+
+.storehouse h3 {
+  margin: 0.5rem 0 0.25rem;
+  font-size: 1rem;
+}
+
+.storehouse li {
+  align-items: center;
+}
+
+.storehouse button {
+  padding: 0.15rem 0.6rem;
+  font-size: 0.85rem;
+}
+
+.storehouse button:disabled {
+  cursor: not-allowed;
+}
+
+.storehouse .away {
+  margin-top: 0.5rem;
+  font-style: italic;
+}
+
 .visually-hidden {
   position: absolute;
   width: 1px;
