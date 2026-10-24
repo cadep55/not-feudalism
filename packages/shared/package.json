@@ -11,7 +11,9 @@
     "typecheck": "tsc -p .",
     "test": "vitest run --coverage"
   },
-  "dependencies": {},
+  "dependencies": {
+    "zod": "4.6.5"
+  },
   "devDependencies": {
     "@nf/config": "workspace:*",
     "@vitest/coverage-v8": "5.0.3"
