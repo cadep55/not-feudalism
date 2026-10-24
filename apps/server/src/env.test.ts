@@ -13,6 +13,7 @@ describe("readServerEnv", () => {
       NODE_ENV: "development",
       PORT: 2567,
       AUTH_RATE_LIMIT: 20,
+      GAME_ACTION_RATE_LIMIT: 120,
       LOG_LEVEL: "info",
     });
   });

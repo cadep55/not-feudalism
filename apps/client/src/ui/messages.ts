@@ -9,6 +9,7 @@ export const FAILURE_MESSAGES: Record<FailureReason | "network_error", string> =
   name_taken: "That character name is taken.",
   not_authenticated: "Please log in.",
   rate_limited: "Too many attempts. Please wait a few minutes.",
+  out_of_bounds: "You can't go there.",
   protocol_mismatch: "A new version of the game is out. Please refresh the page.",
   network_error: "Can't reach the server. Is it running?",
 };

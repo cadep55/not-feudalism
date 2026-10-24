@@ -8,6 +8,8 @@ const ServerEnv = z.object({
   CLIENT_ORIGIN: z.url(),
   // Sign-up and login attempts allowed per IP per 15 minutes.
   AUTH_RATE_LIMIT: z.coerce.number().int().min(1).default(20),
+  // Game actions allowed per account per minute.
+  GAME_ACTION_RATE_LIMIT: z.coerce.number().int().min(1).default(120),
   LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace", "silent"]).default("info"),
 });
 

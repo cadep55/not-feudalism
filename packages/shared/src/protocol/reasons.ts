@@ -10,6 +10,7 @@ export const FAILURE_REASONS = [
   "name_taken",
   "not_authenticated",
   "rate_limited",
+  "out_of_bounds",
   "protocol_mismatch",
 ] as const;
 

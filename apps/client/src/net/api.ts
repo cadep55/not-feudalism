@@ -1,5 +1,7 @@
 import {
   type FailureReason,
+  type GameAction,
+  type GameState,
   isFailureReason,
   type LoginRequest,
   PROTOCOL_VERSION,
@@ -58,9 +60,24 @@ export function createApi(serverUrl: string, fetchImpl: typeof fetch = fetch) {
       const result = await request<{ protocol: number }>("/version");
       return result.ok ? { ok: true, value: result.value.protocol === PROTOCOL_VERSION } : result;
     },
+    getState: async () => unwrapState(await request<{ state: GameState }>("/game/state")),
+    /**
+     * Sends one action. Pass the same requestId when retrying after a network
+     * error, so the server applies it at most once.
+     */
+    sendAction: async (action: GameAction, requestId: string = newRequestId()) =>
+      unwrapState(await post<{ state: GameState }>("/game/actions", { requestId, ...action })),
   };
+}
+
+export function newRequestId(): string {
+  return crypto.randomUUID();
 }
 
 function unwrapPlayer(result: ApiResult<{ player: Player }>): ApiResult<Player> {
   return result.ok ? { ok: true, value: result.value.player } : result;
+}
+
+function unwrapState(result: ApiResult<{ state: GameState }>): ApiResult<GameState> {
+  return result.ok ? { ok: true, value: result.value.state } : result;
 }

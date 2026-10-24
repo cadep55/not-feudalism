@@ -52,6 +52,7 @@ export async function startServer(env: ServerEnv, logger: Logger): Promise<Runni
           secureCookies: env.NODE_ENV === "production",
           rateLimitPerWindow: env.AUTH_RATE_LIMIT,
         },
+        game: { db, actionsPerMinute: env.GAME_ACTION_RATE_LIMIT },
       });
     },
   });
