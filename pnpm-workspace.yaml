@@ -1,0 +1,11 @@
+packages:
+  - apps/*
+  - packages/*
+
+# Pin exact versions when adding dependencies (AGENTS.md: no casual upgrades)
+savePrefix: ""
+
+# Dependency install scripts are blocked unless listed here.
+# lefthook's own postinstall is skipped; the root "prepare" script installs the hooks.
+allowBuilds:
+  lefthook: false

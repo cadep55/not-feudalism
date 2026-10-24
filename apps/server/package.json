@@ -1,0 +1,20 @@
+{
+  "name": "@nf/server",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Authoritative game server: Colyseus rooms and HTTP API",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p .",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "@nf/shared": "workspace:*"
+  },
+  "devDependencies": {
+    "@nf/config": "workspace:*"
+  }
+}

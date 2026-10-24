@@ -1,0 +1,4 @@
+{
+  "extends": "@nf/config/tsconfig.node.json",
+  "include": ["src"]
+}

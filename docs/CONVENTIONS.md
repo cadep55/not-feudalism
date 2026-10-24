@@ -89,7 +89,7 @@ it("rejects crafting without materials", () => {
 
 On every PR and push to `main`:
 
-1. **Setup:** checkout, pnpm (via corepack), Node 24, cached pnpm store and Turborepo cache
+1. **Setup:** checkout, pnpm (`pnpm/action-setup`, version from `packageManager`), Node from `.nvmrc`, cached pnpm store and Turborepo cache
 2. **Lint and format:** `biome ci`
 3. **Typecheck:** `turbo typecheck`
 4. **Unit, property and data tests** with coverage
