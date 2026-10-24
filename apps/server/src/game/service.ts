@@ -1,48 +1,29 @@
-import { characters, type Db, type DbExecutor, gameActions } from "@nf/db";
+import { type Db, type DbExecutor, gameActions } from "@nf/db";
 import {
   type ActionFailure,
   type ActionRequest,
   applyAction,
-  type CharacterState,
   type GameState,
   type RuleResult,
+  resolveJob,
 } from "@nf/shared";
 import { and, eq } from "drizzle-orm";
+import { loadStateForUpdate, saveState } from "./state-store.ts";
 
 export type ActionResult = RuleResult<GameState, ActionFailure>;
 
-const characterColumns = {
-  id: characters.id,
-  name: characters.name,
-  rank: characters.rank,
-  gold: characters.gold,
-  region: characters.region,
-  x: characters.x,
-  y: characters.y,
-  movedAt: characters.movedAt,
-};
-
-/** Database row (timestamps as Date) to game state (timestamps as epoch milliseconds). */
-function toCharacterState(row: {
-  id: string;
-  name: string;
-  rank: string;
-  gold: number;
-  region: string;
-  x: number;
-  y: number;
-  movedAt: Date;
-}): CharacterState {
-  return { ...row, movedAt: row.movedAt.getTime() };
-}
-
-export async function loadState(db: DbExecutor, characterId: string): Promise<GameState> {
-  const [character] = await db
-    .select(characterColumns)
-    .from(characters)
-    .where(eq(characters.id, characterId));
-  if (!character) throw new Error(`Character ${characterId} not found`);
-  return { character: toCharacterState(character) };
+/**
+ * The character's current state. Finished jobs are resolved and saved first
+ * (lazy resolution), so a gather that completed while the player was away
+ * shows up in their inventory.
+ */
+export async function readState(db: Db, characterId: string, now: Date): Promise<GameState> {
+  return db.transaction(async (tx) => {
+    const before = await loadStateForUpdate(tx, characterId);
+    const after = resolveJob(before, now.getTime());
+    if (after !== before) await saveState(tx, before, after, now);
+    return after;
+  });
 }
 
 async function storedResult(
@@ -79,15 +60,15 @@ export async function performAction(
       const previous = await storedResult(tx, characterId, requestId);
       if (previous) return previous;
 
-      const [character] = await tx
-        .select(characterColumns)
-        .from(characters)
-        .where(eq(characters.id, characterId))
-        .for("update");
-      if (!character) throw new Error(`Character ${characterId} not found`);
-
-      const result = applyAction({ character: toCharacterState(character) }, action, now.getTime());
-      if (result.ok) await saveCharacter(tx, result.value.character);
+      const before = await loadStateForUpdate(tx, characterId);
+      const result = applyAction(before, action, now.getTime());
+      if (result.ok) {
+        await saveState(tx, before, result.value, now);
+      } else {
+        // A refused action still collects a gather that finished in the meantime.
+        const resolved = resolveJob(before, now.getTime());
+        if (resolved !== before) await saveState(tx, before, resolved, now);
+      }
       await tx.insert(gameActions).values({
         characterId,
         requestId,
@@ -105,18 +86,4 @@ export async function performAction(
     }
     throw err;
   }
-}
-
-async function saveCharacter(db: DbExecutor, character: CharacterState): Promise<void> {
-  await db
-    .update(characters)
-    .set({
-      rank: character.rank,
-      gold: character.gold,
-      region: character.region,
-      x: character.x,
-      y: character.y,
-      movedAt: new Date(character.movedAt),
-    })
-    .where(eq(characters.id, character.id));
 }

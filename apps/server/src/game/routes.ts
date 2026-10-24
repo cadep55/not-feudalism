@@ -4,7 +4,7 @@ import { Router } from "express";
 import { rateLimit } from "express-rate-limit";
 import { currentPlayer, requireSession } from "../auth/require-session.ts";
 import { sendFailure } from "../http/failure.ts";
-import { loadState, performAction } from "./service.ts";
+import { performAction, readState } from "./service.ts";
 
 export type GameDeps = {
   db: Db;
@@ -20,7 +20,7 @@ export function createGameRouter(deps: GameDeps): Router {
   router.use(requireSession(deps.db, now));
 
   router.get("/state", async (_req, res) => {
-    const state = await loadState(deps.db, currentPlayer(res).characterId);
+    const state = await readState(deps.db, currentPlayer(res).characterId, now());
     res.json({ state });
   });
 

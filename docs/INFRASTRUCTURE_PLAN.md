@@ -84,7 +84,7 @@ Each bullet is about one PR with its tests.
 
 ## Step 7: Core game loop, single player (🤖, driven by design issues) — Phase 1
 
-- [ ] Gather a resource on a timer: data tables, lazily resolved jobs with property tests, inventory UI (#19)
+- [x] Gather a resource on a timer: data tables, lazily resolved jobs, inventory UI (#19: wood, stone, wheat; 3 s; wheat needs a rake)
 - [ ] Craft an item from a recipe: recipe data validated (inputs exist, no cycles), item conservation property test (#20)
 - [ ] Trade with an NPC merchant: prices as data, gold and items conserved in one transaction (#21)
 - [ ] Land plots and buildings (per-character in Phase 1)

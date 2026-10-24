@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { NODE_IDS } from "../data/resources.ts";
 import { LIMITS } from "./limits.ts";
 
 const coordinate = z.int().min(0).max(LIMITS.maxCoordinate);
@@ -6,6 +7,10 @@ const coordinate = z.int().min(0).max(LIMITS.maxCoordinate);
 /** Intent: walk to a tile. The room checks region bounds and movement speed. */
 export const MoveTo = z.strictObject({ x: coordinate, y: coordinate });
 export type MoveTo = z.infer<typeof MoveTo>;
+
+/** Intent: start gathering at a resource node next to the character. */
+export const GatherStart = z.strictObject({ nodeId: z.enum(NODE_IDS) });
+export type GatherStart = z.infer<typeof GatherStart>;
 
 /** Intent: say something in the current region's chat. */
 export const ChatSend = z.strictObject({

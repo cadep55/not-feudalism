@@ -13,6 +13,8 @@ export const ALICE_STATE: GameState = {
     y: 10,
     movedAt: 0,
   },
+  inventory: {},
+  job: null,
 };
 
 export const ALICE: Player = {

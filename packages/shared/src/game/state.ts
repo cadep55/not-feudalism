@@ -1,7 +1,9 @@
+import type { ItemId } from "../data/items.ts";
+import type { NodeId } from "../data/resources.ts";
+
 /**
  * Everything the client needs to draw a character's game. The server is the
  * source of truth; the client only ever receives this, never sends it.
- * Inventory and timed jobs join this in issue #19.
  */
 export type CharacterState = {
   id: string;
@@ -16,6 +18,22 @@ export type CharacterState = {
   movedAt: number;
 };
 
+/** Item counts. Items the character has none of are left out. */
+export type Inventory = Partial<Record<ItemId, number>>;
+
+/** A timed action in progress (golden rule 5: timestamps, no ticking). Times are epoch ms. */
+export type GatherJob = {
+  kind: "gather";
+  nodeId: NodeId;
+  startedAt: number;
+  completesAt: number;
+};
+
+export type Job = GatherJob;
+
 export type GameState = {
   character: CharacterState;
+  inventory: Inventory;
+  /** The character's job in progress, or null when idle. */
+  job: Job | null;
 };

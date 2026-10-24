@@ -12,6 +12,9 @@ export const FAILURE_REASONS = [
   "rate_limited",
   "out_of_bounds",
   "moved_too_fast",
+  "too_far_away",
+  "busy",
+  "missing_tool",
   "protocol_mismatch",
 ] as const;
 

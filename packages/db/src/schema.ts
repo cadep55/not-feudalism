@@ -1,5 +1,6 @@
 import { sql } from "drizzle-orm";
 import {
+  check,
   index,
   integer,
   jsonb,
@@ -93,5 +94,50 @@ export const gameActions = pgTable(
   (table) => [
     primaryKey({ columns: [table.characterId, table.requestId] }),
     index("game_actions_created_at_idx").on(table.createdAt),
+  ],
+);
+
+/** Item counts per character. A row exists only while the count is above zero. */
+export const inventories = pgTable(
+  "inventories",
+  {
+    characterId: uuid("character_id")
+      .notNull()
+      .references(() => characters.id, { onDelete: "cascade" }),
+    // Item IDs come from packages/shared/src/data/items.ts.
+    itemId: text("item_id").notNull(),
+    quantity: integer("quantity").notNull(),
+    ...timestamps,
+  },
+  (table) => [
+    primaryKey({ columns: [table.characterId, table.itemId] }),
+    check("inventories_quantity_positive", sql`${table.quantity} > 0`),
+  ],
+);
+
+/**
+ * Timed actions (golden rule 5): gathering now, crafting and travel later.
+ * Resolved lazily when state is read; finished and cancelled jobs stay as history.
+ */
+export const jobs = pgTable(
+  "jobs",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    characterId: uuid("character_id")
+      .notNull()
+      .references(() => characters.id, { onDelete: "cascade" }),
+    kind: text("kind").notNull(),
+    payload: jsonb("payload").notNull(),
+    startedAt: timestamp("started_at", { withTimezone: true }).notNull(),
+    completesAt: timestamp("completes_at", { withTimezone: true }).notNull(),
+    resolvedAt: timestamp("resolved_at", { withTimezone: true }),
+    // "completed" or "cancelled" once resolved.
+    outcome: text("outcome"),
+  },
+  (table) => [
+    // At most one job in progress per character.
+    uniqueIndex("jobs_one_active_per_character_idx")
+      .on(table.characterId)
+      .where(sql`${table.resolvedAt} is null`),
   ],
 );
