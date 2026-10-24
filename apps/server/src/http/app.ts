@@ -1,3 +1,4 @@
+import { PROTOCOL_VERSION } from "@nf/shared";
 import cors from "cors";
 import express, { type Application, type ErrorRequestHandler } from "express";
 import helmet from "helmet";
@@ -42,6 +43,11 @@ export function configureHttp(app: Application, deps: HttpDeps): void {
       deps.logger.warn({ err }, "readiness check failed");
       res.status(503).json({ status: "unavailable" });
     }
+  });
+
+  // The client compares this with its own PROTOCOL_VERSION and asks the player to refresh on mismatch.
+  app.get("/version", (_req, res) => {
+    res.json({ protocol: PROTOCOL_VERSION });
   });
 
   if (deps.auth) app.use("/auth", createAuthRouter(deps.auth));

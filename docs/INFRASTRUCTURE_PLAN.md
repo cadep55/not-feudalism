@@ -61,7 +61,7 @@ Each bullet is about one PR with its tests.
 - [x] **Server shell:** Express + Colyseus in one process, `/healthz` and `/readyz`, pino logging, graceful shutdown, CORS and Helmet (#6)
 - [x] **Protocol package:** `PROTOCOL_VERSION`, first Zod message schemas, shared `RuleResult` type (#7)
 - [x] **Auth:** sign-up and login (argon2id, http-only session cookie), rate limiting, Colyseus `onAuth` that checks the session. Integration tests (#8; the room-side check `authenticateCookieHeader` is wired into rooms in #10)
-- [ ] **Client shell:** Vite + React + Phaser, login screen, network client with auto-reconnect
+- [x] **Client shell:** Vite + React + Phaser, login screen, network client with auto-reconnect (#9; WebSocket auto-reconnect lands with the first room)
 - [ ] **RegionRoom:** join, spawn character at their saved position, `move.to` intent validated server-side, positions synced, region chat
 - [ ] **E2E:** Playwright test where two browser contexts sign up, join the region, one moves and the other sees it, and they exchange a chat message
 - [ ] **E2E in CI:** job boots the server with a Postgres service, serves the built client, runs Playwright, uploads traces on failure

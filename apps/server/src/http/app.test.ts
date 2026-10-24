@@ -1,4 +1,5 @@
 import type { AddressInfo } from "node:net";
+import { PROTOCOL_VERSION } from "@nf/shared";
 import express from "express";
 import { pino } from "pino";
 import { afterEach, describe, expect, it } from "vitest";
@@ -50,6 +51,15 @@ describe("health routes", () => {
     const res = await get("/readyz");
     expect(res.status).toBe(503);
     expect(await res.json()).toEqual({ status: "unavailable" });
+  });
+});
+
+describe("version route", () => {
+  it("reports the protocol version for the client's compatibility check", async () => {
+    const get = await startApp();
+    const res = await get("/version");
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ protocol: PROTOCOL_VERSION });
   });
 });
 
