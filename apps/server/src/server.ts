@@ -43,7 +43,16 @@ export async function startServer(env: ServerEnv, logger: Logger): Promise<Runni
     greet: false,
     logger,
     express: (app) => {
-      configureHttp(app, { clientOrigin: env.CLIENT_ORIGIN, logger, checkDatabase });
+      configureHttp(app, {
+        clientOrigin: env.CLIENT_ORIGIN,
+        logger,
+        checkDatabase,
+        auth: {
+          db,
+          secureCookies: env.NODE_ENV === "production",
+          rateLimitPerWindow: env.AUTH_RATE_LIMIT,
+        },
+      });
     },
   });
   // Rooms are registered here (gameServer.define) from issue #10 on.

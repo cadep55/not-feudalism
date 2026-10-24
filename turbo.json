@@ -24,7 +24,14 @@
     "dev": {
       "cache": false,
       "persistent": true,
-      "passThroughEnv": ["DATABASE_URL", "NODE_ENV", "PORT", "CLIENT_ORIGIN", "LOG_LEVEL"]
+      "passThroughEnv": [
+        "DATABASE_URL",
+        "NODE_ENV",
+        "PORT",
+        "CLIENT_ORIGIN",
+        "LOG_LEVEL",
+        "AUTH_RATE_LIMIT"
+      ]
     }
   }
 }

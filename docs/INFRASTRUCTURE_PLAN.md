@@ -60,7 +60,7 @@ Each bullet is about one PR with its tests.
 
 - [x] **Server shell:** Express + Colyseus in one process, `/healthz` and `/readyz`, pino logging, graceful shutdown, CORS and Helmet (#6)
 - [x] **Protocol package:** `PROTOCOL_VERSION`, first Zod message schemas, shared `RuleResult` type (#7)
-- [ ] **Auth:** sign-up and login (argon2id, http-only session cookie), rate limiting, Colyseus `onAuth` that checks the session. Integration tests
+- [x] **Auth:** sign-up and login (argon2id, http-only session cookie), rate limiting, Colyseus `onAuth` that checks the session. Integration tests (#8; the room-side check `authenticateCookieHeader` is wired into rooms in #10)
 - [ ] **Client shell:** Vite + React + Phaser, login screen, network client with auto-reconnect
 - [ ] **RegionRoom:** join, spawn character at their saved position, `move.to` intent validated server-side, positions synced, region chat
 - [ ] **E2E:** Playwright test where two browser contexts sign up, join the region, one moves and the other sees it, and they exchange a chat message
@@ -68,7 +68,7 @@ Each bullet is about one PR with its tests.
 
 ## Step 6: Staging deploy (🧑 accounts, then 🤖)
 
-- [ ] 🧑 Create a **Railway** project with a Postgres database and connect the GitHub repo. Create a **Cloudflare** account; buy or attach a domain (optional at first; free `*.pages.dev` and `*.up.railway.app` URLs work)
+- [ ] 🧑 Create a **Railway** project with a Postgres database and connect the GitHub repo. Create a **Cloudflare** account and attach a domain. **Needed for login:** the session cookie is `SameSite=Lax`, so the client and server must share a site (e.g. `play.<domain>` and `api.<domain>`). On the free `*.pages.dev` + `*.up.railway.app` URLs the browser won't send the cookie to the server
 - [ ] 🧑 Create **Sentry** (free) projects for client and server, and an uptime monitor on `/healthz`
 - [ ] 🧑 Add secrets to the GitHub `staging` Environment and to Railway variables (`DATABASE_URL`, `SESSION_SECRET`, `SENTRY_DSN`, `CLIENT_ORIGIN`)
 - [ ] 🤖 `apps/server/Dockerfile` (multi-stage, non-root user, small final image)

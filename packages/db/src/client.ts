@@ -9,3 +9,6 @@ export function createDb(databaseUrl: string) {
 }
 
 export type Db = ReturnType<typeof createDb>["db"];
+
+/** A connection or an open transaction: functions taking this work inside or outside db.transaction(). */
+export type DbExecutor = Db | Parameters<Parameters<Db["transaction"]>[0]>[0];

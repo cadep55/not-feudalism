@@ -1,3 +1,4 @@
+export { SPAWN_POINT, STARTING_REGION } from "./data/world.ts";
 export { LoginRequest, SignUpRequest } from "./protocol/auth.ts";
 export { LIMITS } from "./protocol/limits.ts";
 export {

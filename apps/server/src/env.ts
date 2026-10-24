@@ -6,6 +6,8 @@ const ServerEnv = z.object({
   // 0 picks a free port (used by tests).
   PORT: z.coerce.number().int().min(0).max(65_535).default(2567),
   CLIENT_ORIGIN: z.url(),
+  // Sign-up and login attempts allowed per IP per 15 minutes.
+  AUTH_RATE_LIMIT: z.coerce.number().int().min(1).default(20),
   LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace", "silent"]).default("info"),
 });
 
