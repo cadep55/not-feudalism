@@ -59,7 +59,7 @@ The goal of steps 0–5 is a **walking skeleton**: two people can sign up, appea
 Each bullet is about one PR with its tests.
 
 - [x] **Server shell:** Express + Colyseus in one process, `/healthz` and `/readyz`, pino logging, graceful shutdown, CORS and Helmet (#6)
-- [ ] **Protocol package:** `PROTOCOL_VERSION`, first Zod message schemas, shared `RuleResult` type
+- [x] **Protocol package:** `PROTOCOL_VERSION`, first Zod message schemas, shared `RuleResult` type (#7)
 - [ ] **Auth:** sign-up and login (argon2id, http-only session cookie), rate limiting, Colyseus `onAuth` that checks the session. Integration tests
 - [ ] **Client shell:** Vite + React + Phaser, login screen, network client with auto-reconnect
 - [ ] **RegionRoom:** join, spawn character at their saved position, `move.to` intent validated server-side, positions synced, region chat
