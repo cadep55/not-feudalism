@@ -2,6 +2,7 @@ import cors from "cors";
 import express, { type Application, type ErrorRequestHandler } from "express";
 import helmet from "helmet";
 import { pinoHttp } from "pino-http";
+import { type AuthDeps, createAuthRouter } from "../auth/routes.ts";
 import type { Logger } from "../logger.ts";
 
 export type HttpDeps = {
@@ -9,6 +10,8 @@ export type HttpDeps = {
   logger: Logger;
   /** Resolves when the database answers; rejects otherwise. */
   checkDatabase: () => Promise<void>;
+  /** Mounts /auth when provided (tests of the base app can leave it out). */
+  auth?: AuthDeps;
 };
 
 /** Installs middleware and HTTP routes. Colyseus adds its matchmaking routes to the same app. */
@@ -40,6 +43,8 @@ export function configureHttp(app: Application, deps: HttpDeps): void {
       res.status(503).json({ status: "unavailable" });
     }
   });
+
+  if (deps.auth) app.use("/auth", createAuthRouter(deps.auth));
 
   const handleError: ErrorRequestHandler = (err, req, res, _next) => {
     // Client errors from middleware (bad JSON 400, body too large 413) keep their status.

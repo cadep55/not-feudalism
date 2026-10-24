@@ -5,6 +5,7 @@
 export const FAILURE_REASONS = [
   "invalid_input",
   "invalid_credentials",
+  "account_banned",
   "email_taken",
   "name_taken",
   "not_authenticated",
