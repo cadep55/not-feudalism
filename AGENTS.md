@@ -2,7 +2,7 @@
 
 This is the shared playbook for every contributor, both humans and AI coding agents (Claude Code, Codex, Cursor, Copilot and others). Read it before you change anything. If something here is wrong or out of date, fix it in the same PR as the change that made it wrong.
 
-> **Status:** the tech stack is **Proposed** (see [ADR 0001](docs/decisions/0001-tech-stack.md)) until both owners accept it. The monorepo, tooling and CI exist (Steps 1–3 of [docs/INFRASTRUCTURE_PLAN.md](docs/INFRASTRUCTURE_PLAN.md)). Folders and commands marked *(planned)* arrive in later steps.
+> **Status:** the tech stack is **Proposed** (see [ADR 0001](docs/decisions/0001-tech-stack.md)) until both owners accept it. The monorepo, tooling, CI and local dev environment exist (Steps 1–4 of [docs/INFRASTRUCTURE_PLAN.md](docs/INFRASTRUCTURE_PLAN.md)). Folders and commands marked *(planned)* arrive in later steps.
 
 ## The game in one paragraph
 
@@ -35,8 +35,11 @@ A persistent online medieval world in the spirit of Feudalism 2. Players start a
 
 1. **Node.js 24 or newer** (the project targets 24 LTS; see `.nvmrc`).
 2. **pnpm**, at the version pinned in `package.json` → `packageManager`. On Node 24 run `corepack enable`. On Node 25+ (no Corepack) install it with `winget install pnpm.pnpm` (Windows) or `npm install -g pnpm`.
-3. `pnpm install`. This also installs the git hooks (lefthook): Biome formats staged files on commit, and `pnpm check` runs before push.
-4. Editor: VS Code with the recommended extensions in `.vscode/extensions.json` (Biome formats on save).
+3. **Docker Desktop**, running (for local Postgres). No Docker account needed.
+4. `pnpm install`. This also installs the git hooks (lefthook): Biome formats staged files on commit, and `pnpm check` runs before push.
+5. Copy the env examples: `.env.example` → `.env`, and `apps/client/.env.example` → `apps/client/.env`. The defaults match `docker-compose.yml`.
+6. `pnpm dev`, then open http://localhost:5173.
+7. Editor: VS Code with the recommended extensions in `.vscode/extensions.json` (Biome formats on save).
 
 ## Repository layout
 
@@ -46,12 +49,12 @@ apps/
   server/        Colyseus rooms + Express HTTP API             — placeholder for now
 packages/
   shared/        Game rules, data tables, types, Zod schemas (pure, no I/O)
-  db/            Drizzle schema, migrations, seed scripts      — placeholder for now
+  db/            Drizzle schema, migrations (generated, never hand-edited), seed
   config/        Shared tsconfig presets (base, node, browser)
 e2e/             Playwright end-to-end tests                   (planned)
 docs/            Architecture, conventions, plans, decision records
 .github/         CI workflows, PR/issue templates, CODEOWNERS, Dependabot
-docker-compose.yml   Local Postgres, Redis later               (planned)
+docker-compose.yml   Local Postgres (Redis later)
 ```
 
 Workspace packages are named `@nf/<folder>` and export their TypeScript source directly (`"exports": "./src/index.ts"`). Import across packages by name (`import { ok } from "@nf/shared"`), never by relative path.
@@ -60,18 +63,24 @@ Workspace packages are named `@nf/<folder>` and export their TypeScript source d
 
 ```bash
 pnpm install          # install everything (and git hooks)
+pnpm dev              # start Postgres (Docker), migrate, then server + client with hot reload
 pnpm check            # lint + typecheck + unit tests; must pass before every PR
-pnpm test             # all Vitest suites
+pnpm test             # unit tests (no database needed)
+pnpm test:integration # integration tests (*.int.test.ts) against Postgres; run pnpm db:up first
 pnpm typecheck        # TypeScript in every package
 pnpm lint             # Biome lint + format check
 pnpm format           # Biome auto-fix: format, organise imports, safe lint fixes
 pnpm build            # production build of every app
-pnpm dev              # start Postgres (Docker), server and client with hot reload   (planned)
+pnpm db:up            # start local Postgres in Docker (pnpm db:down stops it)
+pnpm db:migrate       # apply database migrations
+pnpm db:generate      # create a migration after changing packages/db/src/schema.ts
+pnpm db:seed          # load development seed data (players Alice and Bob)
+pnpm db:reset         # wipe the local database, then migrate and seed
+pnpm db:studio        # browse the database in Drizzle Studio
 pnpm test:e2e         # Playwright end-to-end tests                                  (planned)
-pnpm db:migrate       # apply database migrations                                    (planned)
-pnpm db:generate      # generate a migration after changing packages/db/src/schema   (planned)
-pnpm db:seed          # load development seed data                                   (planned)
 ```
+
+Integration tests are named `*.int.test.ts`, so `pnpm test` skips them. In CI they run in a separate job with a Postgres service.
 
 Run one package's task with a filter, e.g. `pnpm --filter @nf/shared test`.
 

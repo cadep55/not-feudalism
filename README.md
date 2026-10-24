@@ -17,11 +17,21 @@ A multiplayer medieval strategy game played in the browser, inspired by Feudalis
 
 ## Getting started
 
-You need Node.js 24+ and pnpm (see [AGENTS.md → Setup](AGENTS.md#setup)).
+You need:
 
-```bash
+- **Node.js 24+** ([nodejs.org](https://nodejs.org), or `winget install OpenJS.NodeJS.LTS`)
+- **pnpm** (`corepack enable` on Node 24, or `winget install pnpm.pnpm`)
+- **Docker Desktop**, running (no account needed)
+
+Then, from the repo folder (PowerShell):
+
+```powershell
 pnpm install
-pnpm check
+Copy-Item .env.example .env
+Copy-Item apps/client/.env.example apps/client/.env
+pnpm dev
 ```
 
-There's nothing playable yet. `pnpm dev` (local database, server and client) arrives in Step 4 of the [infrastructure plan](docs/INFRASTRUCTURE_PLAN.md).
+`pnpm dev` starts Postgres in Docker, applies migrations, and runs the server and client with hot reload. Open http://localhost:5173. Load sample players with `pnpm db:seed`.
+
+There's nothing playable yet: the client and server are placeholders until Step 5 of the [infrastructure plan](docs/INFRASTRUCTURE_PLAN.md). See [AGENTS.md](AGENTS.md#commands) for every command.

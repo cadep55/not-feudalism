@@ -3,15 +3,28 @@
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
+      "env": ["VITE_*"],
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        ".env.production.local",
+        ".env.local",
+        ".env.production",
+        ".env"
+      ],
       "outputs": ["dist/**"]
     },
     "typecheck": {},
     "test": {
       "outputs": ["coverage/**"]
     },
+    "test:integration": {
+      "cache": false,
+      "env": ["DATABASE_URL"]
+    },
     "dev": {
       "cache": false,
-      "persistent": true
+      "persistent": true,
+      "passThroughEnv": ["DATABASE_URL", "NODE_ENV", "PORT", "CLIENT_ORIGIN"]
     }
   }
 }

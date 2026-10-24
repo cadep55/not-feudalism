@@ -8,11 +8,16 @@
     ".": "./src/index.ts"
   },
   "scripts": {
+    "dev": "node --watch --env-file-if-exists=../../.env src/index.ts",
+    "start": "node src/index.ts",
     "typecheck": "tsc -p .",
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
-    "@nf/shared": "workspace:*"
+    "@nf/db": "workspace:*",
+    "@nf/shared": "workspace:*",
+    "drizzle-orm": "0.45.4",
+    "zod": "4.6.5"
   },
   "devDependencies": {
     "@nf/config": "workspace:*"

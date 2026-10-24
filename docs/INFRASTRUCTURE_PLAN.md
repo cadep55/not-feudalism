@@ -40,19 +40,19 @@ The goal of steps 0–5 is a **walking skeleton**: two people can sign up, appea
 ## Step 3: CI (🤖 PR, then 🧑 settings)
 
 - [x] 🤖 `.github/workflows/ci.yml`: install → `biome ci` → typecheck → unit tests with coverage → build, with pnpm and Turborepo caching
-- [ ] 🤖 Add a Postgres service container and integration-test job (once `packages/db` exists)
+- [x] 🤖 Add a Postgres service container and integration-test job (once `packages/db` exists)
 - [x] 🤖 `.github/workflows/codeql.yml`
-- [ ] 🧑 **Branch protection on `main`:** require PR, require CI status checks, require 1 approval, block force-push and deletion
+- [x] 🧑 **Branch protection on `main`:** require PR, require CI status checks, require 1 approval, block force-push and deletion. *(On, admins included. Approvals are set to 0 until the second owner joins; raise to 1 then.)*
 - [ ] 🧑 Turn on Dependabot alerts, secret scanning and push protection (**Settings → Code security**)
 - [ ] 🧑 Create the GitHub Projects board (Backlog / Ready / In progress / In review / Done) and labels (`area:*`, `type:*`, `good first task`)
 
 ## Step 4: Local development environment (🤖)
 
-- [ ] `docker-compose.yml` with Postgres 17 (named volume, health check). Redis is left commented out for later
-- [ ] `.env.example` for server and client; server `env.ts` validates env with Zod at startup
-- [ ] `packages/db`: Drizzle config, first schema (`accounts`, `sessions`, `characters`), `db:generate`, `db:migrate`, `db:seed` scripts
-- [ ] `pnpm dev` starts Docker Postgres, runs migrations, then starts server and client together with hot reload
-- [ ] A "Getting started" section in README that works on a fresh Windows PC (test it on the second owner's machine)
+- [x] `docker-compose.yml` with Postgres 17 (named volume, health check). Redis is left commented out for later
+- [x] `.env.example` for server and client; server `env.ts` validates env with Zod at startup
+- [x] `packages/db`: Drizzle config, first schema (`accounts`, `sessions`, `characters`), `db:generate`, `db:migrate`, `db:seed` scripts
+- [x] `pnpm dev` starts Docker Postgres, runs migrations, then starts server and client together with hot reload (the server is a placeholder that checks the database until Step 5)
+- [ ] A "Getting started" section in README that works on a fresh Windows PC (test it on the second owner's machine). *(Written; not yet tested on a second PC.)*
 
 ## Step 5: Walking skeleton (🤖, several small PRs)
 

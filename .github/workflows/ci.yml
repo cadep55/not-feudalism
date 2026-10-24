@@ -41,3 +41,45 @@ jobs:
 
       - name: Typecheck, test and build
         run: pnpm exec turbo run typecheck test build --cache-dir=.turbo/cache
+
+  integration:
+    name: Integration tests (Postgres)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: nf
+          POSTGRES_PASSWORD: nf_ci_password
+          POSTGRES_DB: not_feudalism
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U nf -d not_feudalism"
+          --health-interval 2s
+          --health-timeout 3s
+          --health-retries 30
+    env:
+      DATABASE_URL: postgres://nf:nf_ci_password@localhost:5432/not_feudalism
+      NODE_ENV: test
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: pnpm/action-setup@v6
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Apply database migrations
+        run: pnpm db:migrate
+
+      - name: Seed the database
+        run: pnpm db:seed
+
+      - name: Run integration tests
+        run: pnpm test:integration

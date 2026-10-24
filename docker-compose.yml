@@ -1,0 +1,29 @@
+# Local development services. Start with `pnpm db:up` (or `pnpm dev`, which does it for you).
+name: not-feudalism
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: nf
+      POSTGRES_PASSWORD: nf_dev_password
+      POSTGRES_DB: not_feudalism
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U nf -d not_feudalism"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  # Redis arrives in Step 9 (multiple server processes). Uncomment when needed.
+  # redis:
+  #   image: redis:7-alpine
+  #   ports:
+  #     - "6379:6379"
+
+volumes:
+  postgres-data:
