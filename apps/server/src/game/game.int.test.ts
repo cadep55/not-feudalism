@@ -15,6 +15,11 @@ const servers: { close: () => void }[] = [];
 
 type Call = (path: string, options?: { body?: unknown; cookie?: string }) => Promise<Response>;
 
+// The game's clock. It starts an hour after real time, so a freshly signed-up
+// character (moved_at = now() in the database) could have walked anywhere.
+// Tests that check walking speed move it by hand.
+let clock = Date.now() + 60 * 60 * 1000;
+
 async function startApp(actionsPerMinute = 1_000): Promise<Call> {
   const app = express();
   configureHttp(app, {
@@ -22,7 +27,7 @@ async function startApp(actionsPerMinute = 1_000): Promise<Call> {
     logger: pino({ level: "silent" }),
     checkDatabase: async () => {},
     auth: { db, secureCookies: false, rateLimitPerWindow: 1_000 },
-    game: { db, actionsPerMinute },
+    game: { db, actionsPerMinute, now: () => new Date(clock) },
   });
   const server = app.listen(0);
   servers.push(server);
@@ -177,6 +182,22 @@ describe("POST /game/actions", () => {
       .from(gameActions)
       .where(eq(gameActions.characterId, characterId));
     expect(logged).toHaveLength(1);
+  });
+
+  it("refuses moves faster than walking speed, and allows them once enough time passes", async () => {
+    const { cookie } = await newPlayer(call);
+    expect((await call("/game/actions", { cookie, body: move(0, 0) })).status).toBe(200);
+
+    const dash = await call("/game/actions", { cookie, body: move(20, 15) });
+    expect(dash.status).toBe(422);
+    expect(await dash.json()).toEqual({ error: "moved_too_fast" });
+    expect((await stateOf(await call("/game/state", { cookie }))).character).toMatchObject({
+      x: 0,
+      y: 0,
+    });
+
+    clock += 10_000;
+    expect((await call("/game/actions", { cookie, body: move(20, 15) })).status).toBe(200);
   });
 
   it("replays failures too, so a retry can't sneak through", async () => {

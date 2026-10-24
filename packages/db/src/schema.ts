@@ -65,6 +65,8 @@ export const characters = pgTable(
     region: text("region").notNull(),
     x: integer("x").notNull(),
     y: integer("y").notNull(),
+    // Last move, for walking-speed checks (ADR 0002).
+    movedAt: timestamp("moved_at", { withTimezone: true }).notNull().defaultNow(),
     ...timestamps,
   },
   (table) => [uniqueIndex("characters_name_lower_idx").on(sql`lower(${table.name})`)],

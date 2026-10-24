@@ -37,7 +37,12 @@ export function createGameRouter(deps: GameDeps): Router {
   router.post("/actions", limiter, async (req, res) => {
     const request = ActionRequest.safeParse(req.body);
     if (!request.success) return sendFailure(res, "invalid_input");
-    const result = await performAction(deps.db, currentPlayer(res).characterId, request.data);
+    const result = await performAction(
+      deps.db,
+      currentPlayer(res).characterId,
+      request.data,
+      now(),
+    );
     if (!result.ok) return sendFailure(res, result.reason);
     res.json({ state: result.value });
   });

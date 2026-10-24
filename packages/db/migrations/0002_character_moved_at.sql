@@ -1,0 +1,1 @@
+ALTER TABLE "characters" ADD COLUMN "moved_at" timestamp with time zone DEFAULT now() NOT NULL;

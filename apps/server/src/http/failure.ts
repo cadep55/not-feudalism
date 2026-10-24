@@ -10,6 +10,7 @@ const STATUS: Record<FailureReason, number> = {
   email_taken: 409,
   name_taken: 409,
   out_of_bounds: 422,
+  moved_too_fast: 422,
   rate_limited: 429,
   protocol_mismatch: 426,
 };
