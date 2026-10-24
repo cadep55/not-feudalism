@@ -45,7 +45,7 @@ A persistent online medieval world in the spirit of Feudalism 2. Players start a
 
 ```
 apps/
-  client/        Phaser + React browser game (Vite)            — placeholder for now
+  client/        React screens (src/ui), Phaser world (src/game), server calls (src/net)
   server/        Colyseus rooms + Express HTTP API (/healthz, /readyz; rooms from #10)
 packages/
   shared/        Game rules, data tables, types, Zod schemas (pure, no I/O)

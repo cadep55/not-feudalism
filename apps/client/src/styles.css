@@ -1,0 +1,134 @@
+:root {
+  --parchment: #f5e9c8;
+  --ink: #2b1d0e;
+  --wood: #6b4423;
+  --wood-dark: #4a2e16;
+  --error: #a4161a;
+  color-scheme: light;
+  font-family: Georgia, "Times New Roman", serif;
+  color: var(--ink);
+  background: #2d4a22;
+}
+
+/* Element defaults first, so the more specific component rules below win. */
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+}
+
+form {
+  display: grid;
+  gap: 0.75rem;
+}
+
+label {
+  display: grid;
+  gap: 0.25rem;
+  font-weight: bold;
+}
+
+input {
+  font: inherit;
+  padding: 0.5rem;
+  border: 2px solid var(--wood);
+  border-radius: 4px;
+  background: #fffaf0;
+}
+
+button {
+  font: inherit;
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 4px;
+  background: var(--wood);
+  color: var(--parchment);
+  cursor: pointer;
+}
+
+button:hover:not(:disabled) {
+  background: var(--wood-dark);
+}
+
+button:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+/* Components */
+
+.error {
+  color: var(--error);
+  margin: 0;
+}
+
+.status {
+  color: var(--parchment);
+  font-size: 1.2rem;
+}
+
+.status.error {
+  background: var(--parchment);
+  color: var(--error);
+  padding: 1rem 1.5rem;
+  border-radius: 6px;
+}
+
+.auth {
+  width: min(360px, calc(100vw - 32px));
+  box-sizing: border-box;
+  background: var(--parchment);
+  border: 4px solid var(--wood);
+  border-radius: 8px;
+  padding: 1.5rem;
+  box-shadow: 0 8px 24px #0006;
+}
+
+.auth h1 {
+  margin: 0 0 1rem;
+  text-align: center;
+}
+
+.tabs {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.tabs button {
+  flex: 1;
+  background: transparent;
+  color: var(--ink);
+  border: 2px solid var(--wood);
+}
+
+.tabs button:hover:not(:disabled) {
+  background: #6b442322;
+}
+
+.tabs button[aria-selected="true"] {
+  background: var(--wood);
+  color: var(--parchment);
+}
+
+.game {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.game header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: var(--parchment);
+}
+
+.canvas canvas {
+  display: block;
+  max-width: calc(100vw - 32px);
+  height: auto;
+  border: 4px solid var(--wood);
+  border-radius: 4px;
+}

@@ -1,0 +1,14 @@
+import type { FailureReason } from "@nf/shared";
+
+/** Player-facing text for every failure the server can report. */
+export const FAILURE_MESSAGES: Record<FailureReason | "network_error", string> = {
+  invalid_input: "Please check the form and try again.",
+  invalid_credentials: "That email and password don't match.",
+  account_banned: "This account has been banned.",
+  email_taken: "An account with that email already exists.",
+  name_taken: "That character name is taken.",
+  not_authenticated: "Please log in.",
+  rate_limited: "Too many attempts. Please wait a few minutes.",
+  protocol_mismatch: "A new version of the game is out. Please refresh the page.",
+  network_error: "Can't reach the server. Is it running?",
+};
