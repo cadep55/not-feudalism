@@ -19,6 +19,7 @@ function character(overrides: Partial<CharacterState> = {}): CharacterState {
     x: 5,
     y: 5,
     movedAt: LAST_MOVE,
+    facing: "s",
     ...overrides,
   };
 }
@@ -46,13 +47,36 @@ describe("moveTo", () => {
   it("moves to any tile inside the region, corners included, and records the time", () => {
     expect(moveTo(character(), { x: 0, y: 0 }, LATER)).toEqual({
       ok: true,
-      value: character({ x: 0, y: 0, movedAt: LATER }),
+      value: character({ x: 0, y: 0, movedAt: LATER, facing: "nw" }),
     });
     const corner = { x: heartland.width - 1, y: heartland.height - 1 };
     expect(moveTo(character(), corner, LATER)).toEqual({
       ok: true,
-      value: character({ ...corner, movedAt: LATER }),
+      value: character({ ...corner, movedAt: LATER, facing: "se" }),
     });
+  });
+
+  it("faces the way it stepped, in all 8 directions", () => {
+    const start = character({ x: 5, y: 5 });
+    const steps = {
+      n: { x: 5, y: 4 },
+      ne: { x: 6, y: 4 },
+      e: { x: 6, y: 5 },
+      se: { x: 6, y: 6 },
+      s: { x: 5, y: 6 },
+      sw: { x: 4, y: 6 },
+      w: { x: 4, y: 5 },
+      nw: { x: 4, y: 4 },
+    } as const;
+    for (const [facing, target] of Object.entries(steps)) {
+      const result = moveTo(start, target, LATER);
+      expect(result.ok && result.value.facing).toBe(facing);
+    }
+  });
+
+  it("keeps its facing when the 'move' is to the same tile", () => {
+    const result = moveTo(character({ facing: "e" }), { x: 5, y: 5 }, LATER);
+    expect(result.ok && result.value.facing).toBe("e");
   });
 
   it("refuses tiles past the region's edge", () => {
@@ -89,7 +113,13 @@ describe("moveTo", () => {
   it("leaves everything but the position and move time alone", () => {
     const before = character({ gold: 42, rank: "knight" });
     const result = moveTo(before, { x: 1, y: 2 }, LATER);
-    expect(result.ok && result.value).toEqual({ ...before, x: 1, y: 2, movedAt: LATER });
+    expect(result.ok && result.value).toEqual({
+      ...before,
+      x: 1,
+      y: 2,
+      movedAt: LATER,
+      facing: "nw",
+    });
   });
 
   it("treats an unknown region as a bug, not a player mistake", () => {

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { GATHER_DURATION_MS, GATHER_YIELD, RESOURCE_NODES } from "../data/resources.ts";
+import { directionBetween } from "../game/direction.ts";
 import type { GameState } from "../game/state.ts";
 import { startGather } from "./gather.ts";
 import { addItems } from "./inventory.ts";
@@ -9,9 +10,14 @@ const tree = RESOURCE_NODES.heartland_tree;
 const farm = RESOURCE_NODES.heartland_farm;
 const NOW = 1_000_000;
 
+/**
+ * A character at `position`. Unless told otherwise it faces `toward`
+ * (default: the tree), as the client turns before gathering.
+ */
 function stateAt(
   position: { x: number; y: number },
   overrides: Partial<GameState> = {},
+  toward: { x: number; y: number } = tree,
 ): GameState {
   return {
     character: {
@@ -22,6 +28,7 @@ function stateAt(
       region: "heartland",
       ...position,
       movedAt: 0,
+      facing: directionBetween(position, toward) ?? "s",
     },
     inventory: {},
     job: null,
@@ -30,11 +37,11 @@ function stateAt(
 }
 
 describe("startGather", () => {
-  it("starts a timed job when standing next to the node, diagonals included", () => {
+  it("starts a timed job when standing next to the node and facing it, diagonals included", () => {
     for (const spot of [
       { x: tree.x + 1, y: tree.y },
       { x: tree.x - 1, y: tree.y - 1 },
-      { x: tree.x, y: tree.y },
+      { x: tree.x, y: tree.y + 1 },
     ]) {
       expect(startGather(stateAt(spot), "heartland_tree", NOW)).toEqual({
         ok: true,
@@ -48,6 +55,20 @@ describe("startGather", () => {
         }),
       });
     }
+  });
+
+  it("refuses when next to the node but facing away", () => {
+    const beside = { x: tree.x + 1, y: tree.y };
+    const facingAway = stateAt(beside, {}, { x: tree.x + 2, y: tree.y });
+    expect(startGather(facingAway, "heartland_tree", NOW)).toEqual({
+      ok: false,
+      reason: "not_facing",
+    });
+  });
+
+  it("refuses when standing on the node itself (nothing to face)", () => {
+    const onTop = stateAt({ x: tree.x, y: tree.y }, {}, { x: tree.x, y: tree.y + 1 });
+    expect(startGather(onTop, "heartland_tree", NOW)).toEqual({ ok: false, reason: "not_facing" });
   });
 
   it("refuses when the character is more than one tile away", () => {
@@ -68,12 +89,12 @@ describe("startGather", () => {
 
   it("needs a rake for the farm", () => {
     const nextToFarm = { x: farm.x + 1, y: farm.y };
-    expect(startGather(stateAt(nextToFarm), "heartland_farm", NOW)).toEqual({
+    expect(startGather(stateAt(nextToFarm, {}, farm), "heartland_farm", NOW)).toEqual({
       ok: false,
       reason: "missing_tool",
     });
     expect(
-      startGather(stateAt(nextToFarm, { inventory: { rake: 1 } }), "heartland_farm", NOW).ok,
+      startGather(stateAt(nextToFarm, { inventory: { rake: 1 } }, farm), "heartland_farm", NOW).ok,
     ).toBe(true);
   });
 });

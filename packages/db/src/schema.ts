@@ -68,6 +68,8 @@ export const characters = pgTable(
     y: integer("y").notNull(),
     // Last move, for walking-speed checks (ADR 0002).
     movedAt: timestamp("moved_at", { withTimezone: true }).notNull().defaultNow(),
+    // One of the 8 directions in packages/shared/src/game/direction.ts.
+    facing: text("facing").notNull().default("s"),
     ...timestamps,
   },
   (table) => [uniqueIndex("characters_name_lower_idx").on(sql`lower(${table.name})`)],

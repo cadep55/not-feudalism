@@ -79,6 +79,8 @@ async function playerAtTree() {
   const player = await newPlayer();
   const res = await act(player.cookie, "move.to", { x: tree.x + 1, y: tree.y + 1 });
   expect(res.status).toBe(200);
+  // Face the tree (north-west of us), as the client does before gathering.
+  expect((await act(player.cookie, "turn", { facing: "nw" })).status).toBe(200);
   return player;
 }
 
@@ -143,6 +145,50 @@ describe("gathering", () => {
     expect((await state(cookie)).inventory).toEqual({ wood: 3 });
   });
 
+  it("refuses to gather when not facing the node, until the player turns", async () => {
+    const { cookie } = await playerAtTree();
+    await act(cookie, "turn", { facing: "se" });
+    const refused = await act(cookie, "gather.start", { nodeId: "heartland_tree" });
+    expect(refused.status).toBe(422);
+    expect(await refused.json()).toEqual({ error: "not_facing" });
+
+    expect((await act(cookie, "turn", { facing: "nw" })).status).toBe(200);
+    expect((await act(cookie, "gather.start", { nodeId: "heartland_tree" })).status).toBe(200);
+  });
+
+  it("cancels the gather when the player turns away", async () => {
+    const { cookie } = await playerAtTree();
+    await act(cookie, "gather.start", { nodeId: "heartland_tree" });
+    await act(cookie, "turn", { facing: "e" });
+    clock += 3_000;
+    expect((await state(cookie)).inventory).toEqual({});
+  });
+
+  it("saves facing: moves set it and it survives a reload", async () => {
+    const { cookie } = await newPlayer();
+    expect((await state(cookie)).character.facing).toBe("s");
+    await act(cookie, "move.to", { x: 11, y: 10 });
+    expect((await state(cookie)).character.facing).toBe("e");
+    await act(cookie, "turn", { facing: "n" });
+    expect((await state(cookie)).character.facing).toBe("n");
+  });
+
+  it("sets aside a saved job it can't read instead of locking the player out", async () => {
+    const { cookie, characterId } = await newPlayer();
+    await db.insert(jobs).values({
+      characterId,
+      kind: "craft",
+      payload: {},
+      startedAt: new Date(clock),
+      completesAt: new Date(clock + 3_000),
+    });
+    const res = await call("/game/state", { cookie });
+    expect(res.status).toBe(200);
+    expect(((await res.json()) as { state: GameState }).state.job).toBeNull();
+    const [job] = await db.select().from(jobs).where(eq(jobs.characterId, characterId));
+    expect(job).toMatchObject({ outcome: "invalid" });
+  });
+
   it("refuses to gather from too far away", async () => {
     const { cookie } = await newPlayer();
     const res = await act(cookie, "gather.start", { nodeId: "heartland_tree" });
@@ -174,6 +220,8 @@ describe("gathering", () => {
   it("needs a rake for wheat", async () => {
     const { cookie, characterId } = await newPlayer();
     await act(cookie, "move.to", { x: farm.x + 1, y: farm.y });
+    // Face the node (west of us), as the client does before gathering.
+    await act(cookie, "turn", { facing: "w" });
     const refused = await act(cookie, "gather.start", { nodeId: "heartland_farm" });
     expect(refused.status).toBe(422);
     expect(await refused.json()).toEqual({ error: "missing_tool" });

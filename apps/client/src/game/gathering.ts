@@ -26,15 +26,20 @@ export function nodeAt(tile: Tile, region: string): NodeId | null {
   );
 }
 
-/** Whether a character on `tile` is close enough to gather at `node` (the server's rule). */
+/**
+ * Whether a character on `tile` stands right next to `node` (distance exactly 1,
+ * diagonals included): the server's rule for gathering. Standing on the node
+ * itself doesn't count.
+ */
 export function isNextTo(tile: Tile, node: ResourceNode): boolean {
-  return tileDistance(tile, node) <= 1;
+  return tileDistance(tile, node) === 1;
 }
 
 /**
  * Where to stand to gather at `node`: `from` itself when already next to it,
  * otherwise the closest free tile around the node (on the map and not another
- * node). Ties prefer the straighter approach. Null when no tile is free.
+ * node), so standing on the node means stepping off it. Never the node's own
+ * tile. Ties prefer the straighter approach. Null when no tile is free.
  */
 export function nearestAdjacentTile(
   from: Tile,

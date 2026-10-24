@@ -21,16 +21,22 @@ describe("CraftingPanel", () => {
     render(<CraftingPanel inventory={{ wood: 1 }} job={null} onCraft={vi.fn()} />);
     expect(screen.getByRole("heading", { name: "Rake" })).toBeInTheDocument();
     const [wood, stone] = rakeInputs();
-    expect(wood).toHaveTextContent("Wood1/2 (not enough)");
+    expect(wood).toHaveTextContent("Wood 1/2 (not enough)");
     expect(wood).toHaveClass("missing");
-    expect(stone).toHaveTextContent("Stone0/1 (not enough)");
+    expect(stone).toHaveTextContent("Stone 0/1 (not enough)");
     expect(stone).toHaveClass("missing");
+  });
+
+  it("puts a space between the item and its count", () => {
+    render(<CraftingPanel inventory={{}} job={null} onCraft={vi.fn()} />);
+    const [wood] = rakeInputs();
+    expect(wood?.textContent).toMatch(/^Wood 0\/2/);
   });
 
   it("doesn't mark inputs the character has enough of", () => {
     render(<CraftingPanel inventory={{ wood: 5, stone: 0 }} job={null} onCraft={vi.fn()} />);
     const [wood, stone] = rakeInputs();
-    expect(wood).toHaveTextContent("Wood5/2");
+    expect(wood).toHaveTextContent("Wood 5/2");
     expect(wood).not.toHaveTextContent("not enough");
     expect(wood).not.toHaveClass("missing");
     expect(stone).toHaveClass("missing");

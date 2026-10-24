@@ -1,0 +1,1 @@
+ALTER TABLE "characters" ADD COLUMN "facing" text DEFAULT 's' NOT NULL;

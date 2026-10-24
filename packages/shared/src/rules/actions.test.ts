@@ -16,6 +16,8 @@ const state: GameState = {
     x: tree.x + 1,
     y: tree.y,
     movedAt: 0,
+    // East of the tree, facing it (west).
+    facing: "w",
   },
   inventory: {},
   job: null,
@@ -30,8 +32,35 @@ describe("applyAction", () => {
   it("applies move.to to the character", () => {
     expect(applyAction(state, { type: "move.to", payload: { x: 6, y: 7 } }, NOW)).toEqual({
       ok: true,
-      value: { ...state, character: { ...state.character, x: 6, y: 7, movedAt: NOW } },
+      value: {
+        ...state,
+        character: { ...state.character, x: 6, y: 7, movedAt: NOW, facing: "s" },
+      },
     });
+  });
+
+  it("turns without moving", () => {
+    const result = applyAction(state, { type: "turn", payload: { facing: "n" } }, NOW);
+    expect(result.ok && result.value.character).toEqual({ ...state.character, facing: "n" });
+  });
+
+  it("cancels an unfinished gather when the character turns away", () => {
+    const result = applyAction(gathering, { type: "turn", payload: { facing: "e" } }, NOW + 1_000);
+    expect(result.ok && result.value.job).toBeNull();
+  });
+
+  it("keeps the gather going when turning to the way it already faces", () => {
+    const result = applyAction(gathering, { type: "turn", payload: { facing: "w" } }, NOW + 1_000);
+    expect(result.ok && result.value.job).toEqual(gathering.job);
+  });
+
+  it("keeps crafting when turning", () => {
+    const crafting: GameState = {
+      ...state,
+      job: { kind: "craft", recipeId: "rake", startedAt: NOW, completesAt: NOW + 3_000 },
+    };
+    const result = applyAction(crafting, { type: "turn", payload: { facing: "e" } }, NOW + 1_000);
+    expect(result.ok && result.value.job).toEqual(crafting.job);
   });
 
   it("applies gather.start", () => {

@@ -1,6 +1,7 @@
 import type { ItemId } from "../data/items.ts";
 import type { RecipeId } from "../data/recipes.ts";
 import type { NodeId } from "../data/resources.ts";
+import type { Direction } from "./direction.ts";
 
 /**
  * Everything the client needs to draw a character's game. The server is the
@@ -17,6 +18,8 @@ export type CharacterState = {
   y: number;
   /** When the character last moved, in milliseconds since the epoch. Used for speed checks. */
   movedAt: number;
+  /** Which way the character faces: set by its last step or a turn. */
+  facing: Direction;
 };
 
 /** Item counts. Items the character has none of are left out. */

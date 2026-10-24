@@ -11,6 +11,7 @@ export type ActionFailure =
   | "out_of_bounds"
   | "moved_too_fast"
   | "too_far_away"
+  | "not_facing"
   | "busy"
   | "missing_tool"
   | "missing_materials";
@@ -35,6 +36,16 @@ export function applyAction(
       // Walking away from a node cancels an unfinished gather; crafting carries on.
       const cancelled = !stayed && current.job?.kind === "gather";
       return ok({ ...current, character: moved.value, job: cancelled ? null : current.job });
+    }
+    case "turn": {
+      const { facing } = action.payload;
+      // Turning away from the node cancels an unfinished gather, like walking away.
+      const cancelled = facing !== current.character.facing && current.job?.kind === "gather";
+      return ok({
+        ...current,
+        character: { ...current.character, facing },
+        job: cancelled ? null : current.job,
+      });
     }
     case "gather.start":
       return startGather(current, action.payload.nodeId, now);

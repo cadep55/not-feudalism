@@ -16,6 +16,12 @@ async function serverPosition(page: Page): Promise<Position> {
   return { x: state.character.x, y: state.character.y };
 }
 
+async function serverFacing(page: Page): Promise<string> {
+  const res = await page.request.get(`${serverURL}/game/state`);
+  const { state } = (await res.json()) as { state: { character: { facing: string } } };
+  return state.character.facing;
+}
+
 async function clickTile(page: Page, tile: Position) {
   const box = await page.locator("canvas").boundingBox();
   if (!box) throw new Error("canvas not on screen");
@@ -63,6 +69,8 @@ test("a new player walks around, and the game remembers where they stopped", asy
     await expect
       .poll(async () => (await serverPosition(page)).x, { timeout: 5_000 })
       .toBeGreaterThan(spawn.x);
+    // Walking sets the character's front (issue #28).
+    expect(await serverFacing(page)).toBe("e");
   });
 
   const destination = { x: 3, y: 3 };

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { CraftStart, GatherStart, MoveTo } from "./messages.ts";
+import { CraftStart, GatherStart, MoveTo, Turn } from "./messages.ts";
 
 /**
  * One player action sent to POST /game/actions (Phase 1, ADR 0002).
@@ -9,6 +9,7 @@ import { CraftStart, GatherStart, MoveTo } from "./messages.ts";
  */
 export const ActionRequest = z.discriminatedUnion("type", [
   z.strictObject({ requestId: z.uuid(), type: z.literal("move.to"), payload: MoveTo }),
+  z.strictObject({ requestId: z.uuid(), type: z.literal("turn"), payload: Turn }),
   z.strictObject({ requestId: z.uuid(), type: z.literal("gather.start"), payload: GatherStart }),
   z.strictObject({ requestId: z.uuid(), type: z.literal("craft.start"), payload: CraftStart }),
 ]);
