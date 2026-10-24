@@ -44,7 +44,10 @@ export type Job = GatherJob | CraftJob;
 
 export type GameState = {
   character: CharacterState;
+  /** What the character carries (at most CARRY_LIMIT of each). */
   inventory: Inventory;
+  /** What the character's storehouse holds (at most STOREHOUSE_LIMIT of each). */
+  storage: Inventory;
   /** The character's job in progress, or null when idle. */
   job: Job | null;
 };

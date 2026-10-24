@@ -20,6 +20,7 @@ const state: GameState = {
     facing: "w",
   },
   inventory: {},
+  storage: {},
   job: null,
 };
 

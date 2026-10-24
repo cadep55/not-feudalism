@@ -10,7 +10,7 @@ export const ITEMS = {
 
 export type ItemId = keyof typeof ITEMS;
 
-export const ITEM_IDS = Object.keys(ITEMS) as ItemId[];
+export const ITEM_IDS = Object.keys(ITEMS) as [ItemId, ...ItemId[]];
 
 export function isItemId(value: string): value is ItemId {
   return Object.hasOwn(ITEMS, value);

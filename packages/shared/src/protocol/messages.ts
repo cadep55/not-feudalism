@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { ITEM_IDS } from "../data/items.ts";
 import { RECIPE_IDS } from "../data/recipes.ts";
 import { NODE_IDS } from "../data/resources.ts";
 import { DIRECTIONS } from "../game/direction.ts";
@@ -9,6 +10,13 @@ const coordinate = z.int().min(0).max(LIMITS.maxCoordinate);
 /** Intent: walk to a tile. The room checks region bounds and movement speed. */
 export const MoveTo = z.strictObject({ x: coordinate, y: coordinate });
 export type MoveTo = z.infer<typeof MoveTo>;
+
+/** Intent: move items between the character's hands and the storehouse in front of it. */
+export const StorehouseTransfer = z.strictObject({
+  item: z.enum(ITEM_IDS),
+  quantity: z.int().min(1).max(100),
+});
+export type StorehouseTransfer = z.infer<typeof StorehouseTransfer>;
 
 /** Intent: turn to face a direction without moving. */
 export const Turn = z.strictObject({ facing: z.enum(DIRECTIONS) });
