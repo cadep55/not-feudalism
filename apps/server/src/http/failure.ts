@@ -12,6 +12,7 @@ const STATUS: Record<FailureReason, number> = {
   out_of_bounds: 422,
   moved_too_fast: 422,
   too_far_away: 422,
+  not_facing: 422,
   busy: 409,
   missing_tool: 422,
   missing_materials: 422,

@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { RECIPE_IDS } from "../data/recipes.ts";
 import { NODE_IDS } from "../data/resources.ts";
+import { DIRECTIONS } from "../game/direction.ts";
 import { LIMITS } from "./limits.ts";
 
 const coordinate = z.int().min(0).max(LIMITS.maxCoordinate);
@@ -8,6 +9,10 @@ const coordinate = z.int().min(0).max(LIMITS.maxCoordinate);
 /** Intent: walk to a tile. The room checks region bounds and movement speed. */
 export const MoveTo = z.strictObject({ x: coordinate, y: coordinate });
 export type MoveTo = z.infer<typeof MoveTo>;
+
+/** Intent: turn to face a direction without moving. */
+export const Turn = z.strictObject({ facing: z.enum(DIRECTIONS) });
+export type Turn = z.infer<typeof Turn>;
 
 /** Intent: start gathering at a resource node next to the character. */
 export const GatherStart = z.strictObject({ nodeId: z.enum(NODE_IDS) });

@@ -17,6 +17,15 @@ export {
   SPAWN_POINT,
   STARTING_REGION,
 } from "./data/world.ts";
+export {
+  DEFAULT_FACING,
+  DIRECTION_VECTORS,
+  DIRECTIONS,
+  type Direction,
+  directionBetween,
+  isDirection,
+  tileInFront,
+} from "./game/direction.ts";
 export type {
   CharacterState,
   CraftJob,
@@ -37,6 +46,7 @@ export {
   GatherStart,
   MoveTo,
   parseClientMessage,
+  Turn,
 } from "./protocol/messages.ts";
 export { FAILURE_REASONS, type FailureReason, isFailureReason } from "./protocol/reasons.ts";
 export { isCompatibleProtocol, PROTOCOL_VERSION } from "./protocol/version.ts";

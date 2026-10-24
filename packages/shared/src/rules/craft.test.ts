@@ -20,6 +20,7 @@ function stateWith(inventory: Inventory, overrides: Partial<GameState> = {}): Ga
       x: 10,
       y: 10,
       movedAt: 0,
+      facing: "s",
     },
     inventory,
     job: null,

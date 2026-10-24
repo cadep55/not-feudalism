@@ -13,6 +13,7 @@ export const FAILURE_REASONS = [
   "out_of_bounds",
   "moved_too_fast",
   "too_far_away",
+  "not_facing",
   "busy",
   "missing_tool",
   "missing_materials",

@@ -1,8 +1,10 @@
 import { characters, type DbExecutor, inventories, jobs } from "@nf/db";
 import {
+  DEFAULT_FACING,
   type GameState,
   type Inventory,
   ITEM_IDS,
+  isDirection,
   isItemId,
   isNodeId,
   isRecipeId,
@@ -38,6 +40,16 @@ export async function loadStateForUpdate(db: DbExecutor, characterId: string): P
     .select()
     .from(jobs)
     .where(and(eq(jobs.characterId, characterId), isNull(jobs.resolvedAt)));
+  let job = active ? toJob(active) : null;
+  if (active && !job) {
+    // A job this version can't read (e.g. saved by older code) must not lock the
+    // player out of their game forever: set it aside and carry on idle.
+    await db
+      .update(jobs)
+      .set({ resolvedAt: new Date(), outcome: "invalid" })
+      .where(eq(jobs.id, active.id));
+    job = null;
+  }
 
   return {
     character: {
@@ -49,13 +61,15 @@ export async function loadStateForUpdate(db: DbExecutor, characterId: string): P
       x: row.x,
       y: row.y,
       movedAt: row.movedAt.getTime(),
+      facing: isDirection(row.facing) ? row.facing : DEFAULT_FACING,
     },
     inventory,
-    job: active ? toJob(active) : null,
+    job,
   };
 }
 
-function toJob(row: typeof jobs.$inferSelect): Job {
+/** The job a row describes, or null when its kind or payload isn't one this version knows. */
+function toJob(row: typeof jobs.$inferSelect): Job | null {
   const payload = row.payload as { nodeId?: unknown; recipeId?: unknown };
   const times = { startedAt: row.startedAt.getTime(), completesAt: row.completesAt.getTime() };
   if (row.kind === "gather" && typeof payload.nodeId === "string" && isNodeId(payload.nodeId)) {
@@ -68,7 +82,7 @@ function toJob(row: typeof jobs.$inferSelect): Job {
   ) {
     return { kind: "craft", recipeId: payload.recipeId, ...times };
   }
-  throw new Error(`Job ${row.id} has an unknown kind or payload`);
+  return null;
 }
 
 /** What a job stores in its payload column, besides kind and times. */
@@ -99,6 +113,7 @@ export async function saveState(
         x: after.character.x,
         y: after.character.y,
         movedAt: new Date(after.character.movedAt),
+        facing: after.character.facing,
       })
       .where(eq(characters.id, characterId));
   }

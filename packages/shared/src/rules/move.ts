@@ -1,5 +1,6 @@
 import { MOVE_SLACK_TILES, WALK_SPEED_TILES_PER_SECOND } from "../data/movement.ts";
 import { isRegionId, REGIONS } from "../data/world.ts";
+import { directionBetween } from "../game/direction.ts";
 import type { CharacterState } from "../game/state.ts";
 import type { MoveTo } from "../protocol/messages.ts";
 import { fail, ok, type RuleResult } from "../result.ts";
@@ -33,5 +34,7 @@ export function moveTo(
   if (tileDistance(character, target) > maxWalkTiles(now - character.movedAt)) {
     return fail("moved_too_fast");
   }
-  return ok({ ...character, x: target.x, y: target.y, movedAt: now });
+  // Facing follows the step; a "move" to the same tile keeps the current facing.
+  const facing = directionBetween(character, target) ?? character.facing;
+  return ok({ ...character, x: target.x, y: target.y, movedAt: now, facing });
 }

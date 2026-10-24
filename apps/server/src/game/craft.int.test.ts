@@ -128,6 +128,8 @@ describe("crafting the rake", () => {
   it("refuses while gathering", async () => {
     const { cookie } = await newPlayer({ wood: 2, stone: 1 });
     await act(cookie, "move.to", { x: tree.x + 1, y: tree.y });
+    // Face the node (west of us), as the client does before gathering.
+    await act(cookie, "turn", { facing: "w" });
     await act(cookie, "gather.start", { nodeId: "heartland_tree" });
     const res = await act(cookie, "craft.start", { recipeId: "rake" });
     expect(res.status).toBe(409);
@@ -144,6 +146,8 @@ describe("crafting the rake", () => {
     await act(cookie, "craft.start", { recipeId: "rake" });
     clock += CRAFT_MS;
     await act(cookie, "move.to", { x: farm.x + 1, y: farm.y });
+    // Face the node (west of us), as the client does before gathering.
+    await act(cookie, "turn", { facing: "w" });
     expect((await act(cookie, "gather.start", { nodeId: "heartland_farm" })).status).toBe(200);
     clock += 3_000;
     expect((await state(cookie)).inventory).toEqual({ rake: 1, wheat: 1 });
