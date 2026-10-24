@@ -9,10 +9,20 @@
   },
   "scripts": {
     "typecheck": "tsc -p .",
-    "test": "vitest run --passWithNoTests"
+    "test": "vitest run --exclude \"**/*.int.test.ts\"",
+    "test:integration": "vitest run int.test",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "node --env-file-if-exists=../../.env src/migrate.ts",
+    "db:seed": "node --env-file-if-exists=../../.env src/seed.ts",
+    "db:studio": "drizzle-kit studio"
   },
-  "dependencies": {},
+  "dependencies": {
+    "drizzle-orm": "0.45.4",
+    "postgres": "3.4.9",
+    "zod": "4.6.5"
+  },
   "devDependencies": {
-    "@nf/config": "workspace:*"
+    "@nf/config": "workspace:*",
+    "drizzle-kit": "0.31.11"
   }
 }

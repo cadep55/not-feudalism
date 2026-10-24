@@ -6,6 +6,9 @@ packages:
 savePrefix: ""
 
 # Dependency install scripts are blocked unless listed here.
-# lefthook's own postinstall is skipped; the root "prepare" script installs the hooks.
+# - lefthook: its postinstall is skipped; the root "prepare" script installs the hooks.
+# - esbuild: its postinstall only re-checks the platform binary, which pnpm already
+#   installs as an optional dependency.
 allowBuilds:
+  esbuild: false
   lefthook: false

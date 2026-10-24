@@ -1,2 +1,3 @@
-// Drizzle schema, migrations and seed scripts arrive in Step 4 of docs/INFRASTRUCTURE_PLAN.md.
-export {};
+export { createDb, type Db } from "./client.ts";
+export { type DbEnv, readDbEnv } from "./env.ts";
+export * from "./schema.ts";

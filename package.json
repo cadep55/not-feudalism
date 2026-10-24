@@ -7,13 +7,21 @@
     "node": ">=24"
   },
   "scripts": {
-    "dev": "turbo run dev",
+    "dev": "pnpm db:up && pnpm db:migrate && turbo run dev",
     "build": "turbo run build",
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
+    "test:integration": "turbo run test:integration",
     "lint": "biome check .",
     "format": "biome check --write .",
     "check": "biome check . && turbo run typecheck test",
+    "db:up": "docker compose up -d --wait postgres",
+    "db:down": "docker compose down",
+    "db:reset": "docker compose down --volumes && pnpm db:up && pnpm db:migrate && pnpm db:seed",
+    "db:generate": "pnpm --filter @nf/db db:generate",
+    "db:migrate": "pnpm --filter @nf/db db:migrate",
+    "db:seed": "pnpm --filter @nf/db db:seed",
+    "db:studio": "pnpm --filter @nf/db db:studio",
     "prepare": "lefthook install"
   },
   "devDependencies": {

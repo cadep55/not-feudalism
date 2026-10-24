@@ -8,6 +8,9 @@
     ".": "./src/index.ts"
   },
   "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
     "typecheck": "tsc -p .",
     "test": "vitest run --passWithNoTests"
   },
@@ -15,6 +18,7 @@
     "@nf/shared": "workspace:*"
   },
   "devDependencies": {
-    "@nf/config": "workspace:*"
+    "@nf/config": "workspace:*",
+    "vite": "8.3.5"
   }
 }
