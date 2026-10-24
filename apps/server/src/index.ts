@@ -1,21 +1,36 @@
-import { createDb } from "@nf/db";
 import { PROTOCOL_VERSION } from "@nf/shared";
-import { sql } from "drizzle-orm";
 import { readServerEnv } from "./env.ts";
+import { createLogger } from "./logger.ts";
+import { startServer } from "./server.ts";
 
-// Placeholder until the Express + Colyseus server shell (Step 5 of docs/INFRASTRUCTURE_PLAN.md):
-// validates config and proves the database is reachable.
+const SHUTDOWN_TIMEOUT_MS = 10_000;
+
 const env = readServerEnv();
-const { db, close } = createDb(env.DATABASE_URL);
+const logger = createLogger(env);
+const server = await startServer(env, logger);
+logger.info(
+  { port: server.port, protocol: PROTOCOL_VERSION, env: env.NODE_ENV },
+  "server listening",
+);
 
-try {
-  const [row] = await db.execute<{ count: number }>(
-    sql`select count(*)::int as count from characters`,
-  );
-  console.log(
-    `not-feudalism server placeholder (protocol v${PROTOCOL_VERSION}, ${env.NODE_ENV}): ` +
-      `database OK, ${row?.count ?? 0} characters. HTTP and rooms arrive in Step 5.`,
-  );
-} finally {
-  await close();
+let stopping = false;
+async function shutdown(signal: NodeJS.Signals) {
+  if (stopping) return;
+  stopping = true;
+  logger.info({ signal }, "shutting down");
+  const timer = setTimeout(() => {
+    logger.error("shutdown timed out, forcing exit");
+    process.exit(1);
+  }, SHUTDOWN_TIMEOUT_MS);
+  timer.unref();
+  try {
+    await server.stop();
+    process.exit(0);
+  } catch (err) {
+    logger.error({ err }, "shutdown failed");
+    process.exit(1);
+  }
 }
+
+process.once("SIGINT", shutdown);
+process.once("SIGTERM", shutdown);

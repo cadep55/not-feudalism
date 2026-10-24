@@ -9,6 +9,10 @@ savePrefix: ""
 # - lefthook: its postinstall is skipped; the root "prepare" script installs the hooks.
 # - esbuild: its postinstall only re-checks the platform binary, which pnpm already
 #   installs as an optional dependency.
+# - msgpackr-extract (via Colyseus): its install script only compiles from source when no
+#   prebuilt binary exists; prebuilds ship as optional dependencies and msgpackr falls back
+#   to pure JavaScript.
 allowBuilds:
   esbuild: false
   lefthook: false
+  msgpackr-extract: false

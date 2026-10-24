@@ -7,8 +7,13 @@ const valid = {
 };
 
 describe("readServerEnv", () => {
-  it("applies defaults for NODE_ENV and PORT", () => {
-    expect(readServerEnv(valid)).toEqual({ ...valid, NODE_ENV: "development", PORT: 2567 });
+  it("applies defaults for NODE_ENV, PORT and LOG_LEVEL", () => {
+    expect(readServerEnv(valid)).toEqual({
+      ...valid,
+      NODE_ENV: "development",
+      PORT: 2567,
+      LOG_LEVEL: "info",
+    });
   });
 
   it("parses PORT from a string", () => {
@@ -17,6 +22,10 @@ describe("readServerEnv", () => {
 
   it("rejects missing settings with setup instructions", () => {
     expect(() => readServerEnv({})).toThrow(/Copy \.env\.example to \.env/);
+  });
+
+  it("rejects an unknown LOG_LEVEL", () => {
+    expect(() => readServerEnv({ ...valid, LOG_LEVEL: "loud" })).toThrow(/LOG_LEVEL/);
   });
 
   it("rejects an out-of-range PORT", () => {

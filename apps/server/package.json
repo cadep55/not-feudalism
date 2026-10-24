@@ -11,15 +11,26 @@
     "dev": "node --watch --env-file-if-exists=../../.env src/index.ts",
     "start": "node src/index.ts",
     "typecheck": "tsc -p .",
-    "test": "vitest run --passWithNoTests"
+    "test": "vitest run --exclude \"**/*.int.test.ts\"",
+    "test:integration": "vitest run int.test"
   },
   "dependencies": {
+    "@colyseus/core": "0.18.18",
+    "@colyseus/ws-transport": "0.18.4",
     "@nf/db": "workspace:*",
     "@nf/shared": "workspace:*",
+    "cors": "2.8.6",
     "drizzle-orm": "0.45.4",
+    "express": "5.3.0",
+    "helmet": "8.3.0",
+    "pino": "10.4.0",
+    "pino-http": "11.0.0",
     "zod": "4.6.5"
   },
   "devDependencies": {
-    "@nf/config": "workspace:*"
+    "@nf/config": "workspace:*",
+    "@types/cors": "2.8.19",
+    "@types/express": "5.0.6",
+    "pino-pretty": "13.2.0"
   }
 }
