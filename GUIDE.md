@@ -47,29 +47,34 @@ A persistent online medieval world where each player starts as a peasant or smal
 - Art style: pixel art, 2D illustrated or 3D?
 - Which game engine and language (for example Godot, Unity, or JavaScript for the web)?
 
-Proposed answers to all of these are in [ADR 0001](docs/decisions/0001-tech-stack.md). The full setup plan is in [docs/INFRASTRUCTURE_PLAN.md](docs/INFRASTRUCTURE_PLAN.md).
+Proposed answers to all of these are in [ADR 0001](docs/decisions/0001-tech-stack.md). "Solo or multiplayer" is answered: both, solo first ([ADR 0002](docs/decisions/0002-single-player-first.md)). The full setup plan is in [docs/INFRASTRUCTURE_PLAN.md](docs/INFRASTRUCTURE_PLAN.md).
 
 ## Roadmap
 
-### Phase 1: Prototype
+Two phases ([ADR 0002](docs/decisions/0002-single-player-first.md)). Accounts exist from the start, for login and saving progress, and that progress carries from Phase 1 into Phase 2.
 
-- Pick platform, engine and art style
-- Player account, character and basic map
-- One resource, one crafting recipe, one trade action
+### Phase 1: Single player
 
-### Phase 2: Core Systems
+Play alone in your own persistent world.
 
-- Full economy: several resources, recipes and a market
+- Player account, character and cloud-saved progress
+- Basic map: walk around, come back where you left off
+- Prototype loop: one resource, one crafting recipe, one trade with an NPC merchant
+- Full single-player economy: several resources and recipes, NPC markets
 - Land ownership and buildings
-- Basic combat
+- Basic combat against NPCs
+- Put it online so both owners (then friends) can play their own games
 
-### Phase 3: Multiplayer and Politics
+### Phase 2: Multiplayer
 
-- Online play with a shared persistent world
-- Ranks, kingdoms and diplomacy
-- Chat and voting
+The same game, shared with other players.
 
-### Phase 4: Polish and Launch
+- Shared persistent world: see other players and play alongside them
+- Chat, and a player-run market with supply and demand
+- Ranks, kingdoms, vassals and diplomacy
+- Councils and voting
+
+### Then: Polish and Launch
 
 - Art, sound and UI pass
 - Balance testing with friends
@@ -93,6 +98,9 @@ Proposed answers to all of these are in [ADR 0001](docs/decisions/0001-tech-stac
 ## Decisions
 
 Record agreed decisions here with the date.
+
+- **2026-10-24:** Build **single player first, then multiplayer**. Accounts stay for login and saves. The server runs the game rules in both phases, so single-player progress carries into multiplayer. ([ADR 0002](docs/decisions/0002-single-player-first.md))
+- **2026-10-24:** Character names are 3–16 characters, letters, digits and underscores, starting with a letter.
 
 ## Ideas Parking Lot
 

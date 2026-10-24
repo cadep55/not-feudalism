@@ -5,7 +5,7 @@ const MAP_TILES = { width: 25, height: 18 } as const;
 
 type WorldData = { characterName: string };
 
-/** Placeholder world: a grass grid and a welcome. Players and movement arrive in issue #10. */
+/** Placeholder world: a grass grid and a welcome. The character and movement arrive in issue #17. */
 class WorldScene extends Phaser.Scene {
   private readonly world: WorldData;
 

@@ -55,7 +55,7 @@ export async function startServer(env: ServerEnv, logger: Logger): Promise<Runni
       });
     },
   });
-  // Rooms are registered here (gameServer.define) from issue #10 on.
+  // Rooms are registered here (gameServer.define) in Phase 2, starting with #10.
 
   try {
     await listen(gameServer, httpServer, env.PORT);

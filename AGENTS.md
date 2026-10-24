@@ -8,6 +8,8 @@ This is the shared playbook for every contributor, both humans and AI coding age
 
 A persistent online medieval world in the spirit of Feudalism 2. Players start as peasants, then farm, craft, trade, fight and scheme their way up the feudal ladder (peasant → knight → lord → king). It's easy to start, slow to master, and built so players depend on each other. The full vision and feature list are in [GUIDE.md](GUIDE.md).
 
+**We're in Phase 1: single player** ([ADR 0002](docs/decisions/0002-single-player-first.md)). Each player has their own persistent world; the server still runs every rule, over HTTP (`GET /game/state`, `POST /game/actions`), so progress carries into **Phase 2: multiplayer**, which adds Colyseus rooms. Don't build multiplayer features (rooms, chat, player market) until Phase 2 starts; check the issue's milestone.
+
 ## Where to look
 
 | You need… | Read |
@@ -46,7 +48,7 @@ A persistent online medieval world in the spirit of Feudalism 2. Players start a
 ```
 apps/
   client/        React screens (src/ui), Phaser world (src/game), server calls (src/net)
-  server/        Colyseus rooms + Express HTTP API (/healthz, /readyz; rooms from #10)
+  server/        Express HTTP API (auth, game actions); Colyseus rooms in Phase 2
 packages/
   shared/        Game rules, data tables, types, Zod schemas (pure, no I/O)
   db/            Drizzle schema, migrations (generated, never hand-edited), seed
@@ -88,7 +90,7 @@ Run one package's task with a filter, e.g. `pnpm --filter @nf/shared test`.
 
 These are non-negotiable. A PR that breaks one gets sent back.
 
-1. **The server is the authority.** The client sends *intents* ("craft 1 sword"), never *results* ("I now have a sword"). The server validates every intent against the shared rules and the database, then broadcasts the new state. Assume every client is hacked.
+1. **The server is the authority, in single player too.** The client sends *intents* ("craft 1 sword"), never *results* ("I now have a sword"). The server validates every intent against the shared rules and the database, then returns (Phase 1) or broadcasts (Phase 2) the new state. Assume every client is hacked.
 2. **Game rules live in `packages/shared` and are pure functions.** No network, database, clock, or `Math.random()` inside rules: pass in `now` and a seeded RNG. That makes them testable, and lets client and server agree.
 3. **Balance numbers are data, not code.** Prices, timers, recipes, drop rates and rank requirements live in data tables under `packages/shared/src/data/`. Never hard-code a number like `const SWORD_COST = 12` inside logic.
 4. **Every network message has a Zod schema** in `packages/shared/src/protocol/`. The server parses with it before doing anything else.

@@ -1,13 +1,18 @@
 # Infrastructure Plan
 
-The ordered checklist for going from an empty repo to a hosted multiplayer game. Work top to bottom: each step builds on the ones before it. Tick boxes as you go, and turn each step into a GitHub Issue when you start it.
+The ordered checklist for going from an empty repo to a hosted single-player game, then to multiplayer. Work top to bottom: each step builds on the ones before it. Tick boxes as you go, and turn each step into a GitHub Issue when you start it.
 
 **Who does it:**
 
 - 🧑 **owner:** needs a human with account access (sign-ups, billing, repo settings, secrets)
 - 🤖 **agent:** an AI agent or any contributor can do it in a PR
 
-The goal of steps 0–5 is a **walking skeleton**: two people can sign up, appear on the same map, see each other move and chat, deployed on staging, with CI guarding every change. Game features (Roadmap Phase 2 in [GUIDE.md](../GUIDE.md)) start only after that exists.
+Development runs in two phases ([ADR 0002](decisions/0002-single-player-first.md)):
+
+- **Phase 1, single player (Steps 5–8):** play alone in a persistent world. The server runs the rules over HTTP, so progress carries into Phase 2.
+- **Phase 2, multiplayer (Step 9):** a shared world with rooms, chat and a player market.
+
+The goal of Steps 0–5 is a **single-player walking skeleton**: sign up, walk around the map, reload and be in the same place, with CI guarding every change. Steps 6–8 put it online and add the core loop. Issues are grouped under the GitHub milestones **Phase 1: Single player** and **Phase 2: Multiplayer**.
 
 ---
 
@@ -54,17 +59,17 @@ The goal of steps 0–5 is a **walking skeleton**: two people can sign up, appea
 - [x] `pnpm dev` starts Docker Postgres, runs migrations, then starts server and client together with hot reload (the server is a placeholder that checks the database until Step 5)
 - [ ] A "Getting started" section in README that works on a fresh Windows PC (test it on the second owner's machine). *(Written; not yet tested on a second PC.)*
 
-## Step 5: Walking skeleton (🤖, several small PRs)
+## Step 5: Single-player walking skeleton (🤖, several small PRs) — Phase 1
 
 Each bullet is about one PR with its tests.
 
 - [x] **Server shell:** Express + Colyseus in one process, `/healthz` and `/readyz`, pino logging, graceful shutdown, CORS and Helmet (#6)
 - [x] **Protocol package:** `PROTOCOL_VERSION`, first Zod message schemas, shared `RuleResult` type (#7)
-- [x] **Auth:** sign-up and login (argon2id, http-only session cookie), rate limiting, Colyseus `onAuth` that checks the session. Integration tests (#8; the room-side check `authenticateCookieHeader` is wired into rooms in #10)
-- [x] **Client shell:** Vite + React + Phaser, login screen, network client with auto-reconnect (#9; WebSocket auto-reconnect lands with the first room)
-- [ ] **RegionRoom:** join, spawn character at their saved position, `move.to` intent validated server-side, positions synced, region chat
-- [ ] **E2E:** Playwright test where two browser contexts sign up, join the region, one moves and the other sees it, and they exchange a chat message
-- [ ] **E2E in CI:** job boots the server with a Postgres service, serves the built client, runs Playwright, uploads traces on failure
+- [x] **Auth:** sign-up and login (argon2id, http-only session cookie), rate limiting, and `authenticateCookieHeader` for rooms in Phase 2. Integration tests (#8)
+- [x] **Client shell:** Vite + React + Phaser, login screen, network client with protocol check (#9; WebSocket auto-reconnect arrives with rooms in Phase 2)
+- [ ] **Game API:** `GET /game/state` and `POST /game/actions` (shared schemas and rules, one transaction, idempotent `requestId`, rate limit) (#16)
+- [ ] **Movement and resume:** character on the map, click/keyboard movement, positions saved with bounds and speed checks; reload puts you back where you were (#17)
+- [ ] **E2E in CI:** Playwright sign up → move → reload → still there → log out and in; CI boots the server with Postgres, serves the built client, uploads traces on failure (#18)
 
 ## Step 6: Staging deploy (🧑 accounts, then 🤖)
 
@@ -75,29 +80,40 @@ Each bullet is about one PR with its tests.
 - [ ] 🤖 `.github/workflows/deploy-staging.yml`: on push to `main`, after CI passes, run migrations against staging, then deploy to Railway
 - [ ] 🧑 Cloudflare Pages: build `apps/client` from `main` (staging) with PR previews; set `VITE_SERVER_URL`
 - [ ] 🤖 Sentry SDK in client and server, with release tagging from the git SHA
-- [ ] ✅ **Milestone:** both owners play together on the staging URL from their own homes
+- [ ] ✅ **Milestone:** both owners each play their single-player game on the staging URL from their own homes
 
-## Step 7: Core game systems (Roadmap Phase 2) (🤖, driven by design issues)
+## Step 7: Core game loop, single player (🤖, driven by design issues) — Phase 1
 
-- [ ] `packages/shared/src/data/` tables for items, resources, recipes and ranks, with data-validation tests
-- [ ] Jobs system (timestamp-based timers plus a resolver), with property tests
-- [ ] Gathering → crafting → inventory loop, with integration and e2e tests
-- [ ] Market (order book, transactions with row locks, idempotent `requestId`), with property tests that items and gold are conserved
-- [ ] Land plots and buildings
-- [ ] Basic round-based combat in a `BattleRoom`
+- [ ] Gather a resource on a timer: data tables, lazily resolved jobs with property tests, inventory UI (#19)
+- [ ] Craft an item from a recipe: recipe data validated (inputs exist, no cycles), item conservation property test (#20)
+- [ ] Trade with an NPC merchant: prices as data, gold and items conserved in one transaction (#21)
+- [ ] Land plots and buildings (per-character in Phase 1)
+- [ ] Basic round-based combat against NPCs
 - [ ] Admin CLI: grant item, ban, inspect player, with all actions logged to `events`
 
-## Step 8: Production readiness (before the first public playtest)
+## Step 8: Production readiness (before the first public playtest) — Phase 1
 
 - [ ] 🧑 Production Railway environment and database, separate from staging. GitHub `production` Environment with required reviewer
 - [ ] 🤖 `deploy-production.yml`: triggered by publishing a GitHub Release, with manual approval
 - [ ] 🤖 Nightly `pg_dump` backup to Cloudflare R2 (GitHub Actions cron), 14-day retention. 🧑 test a restore
-- [ ] 🤖 Load test: 100 simulated players in one region. Record latency and CPU in `docs/perf/`
-- [ ] 🤖 Chat profanity filter, report button, per-connection message rate limits
+- [ ] 🤖 Load test: 100 simulated players sending actions. Record latency and CPU in `docs/perf/`
 - [ ] 🧑 Privacy policy and terms page (required once strangers make accounts with emails)
 - [ ] 🤖 Incident runbook `docs/RUNBOOK.md`: how to roll back a deploy, restore the DB, ban a player, put up maintenance mode
 
-## Step 9: Scale when needed (not before)
+## Step 9: Multiplayer (🤖) — Phase 2
+
+The same shared rules and database services as Phase 1, reached through Colyseus rooms as well as HTTP. Characters and their progress carry over.
+
+- [ ] **RegionRoom:** join with the session cookie (`authenticateCookieHeader`), spawn at the saved position, `move.to` validated server-side, positions synced, region chat (#10)
+- [ ] **WebSocket auto-reconnect** in the client network layer
+- [ ] **Two-player E2E:** two browser contexts sign up, join the region, one moves and the other sees it, they exchange a chat message (#11)
+- [ ] Per-character world data (resource nodes, merchant stock) moves to shared region-level tables
+- [ ] Player market (order book, row locks, idempotent `requestId`), with property tests that items and gold are conserved
+- [ ] Ranks, kingdoms, vassal links, councils and voting
+- [ ] Chat profanity filter, report button, per-connection message rate limits
+- [ ] Load test: 100 simulated players in one region
+
+## Step 10: Scale when needed (not before)
 
 - [ ] Redis + Colyseus Redis presence/driver to run more than one server process
 - [ ] Sticky-session load balancing, with regions spread across processes

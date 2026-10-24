@@ -19,7 +19,7 @@ services:
       timeout: 3s
       retries: 30
 
-  # Redis arrives in Step 9 (multiple server processes). Uncomment when needed.
+  # Redis arrives in Step 10 (multiple server processes). Uncomment when needed.
   # redis:
   #   image: redis:7-alpine
   #   ports:
