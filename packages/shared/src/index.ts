@@ -1,5 +1,6 @@
 export { ITEM_IDS, ITEMS, type ItemId, isItemId } from "./data/items.ts";
 export { MOVE_SLACK_TILES, WALK_SPEED_TILES_PER_SECOND } from "./data/movement.ts";
+export { isRecipeId, RECIPE_IDS, RECIPES, type Recipe, type RecipeId } from "./data/recipes.ts";
 export {
   GATHER_DURATION_MS,
   GATHER_YIELD,
@@ -16,7 +17,14 @@ export {
   SPAWN_POINT,
   STARTING_REGION,
 } from "./data/world.ts";
-export type { CharacterState, GameState, GatherJob, Inventory, Job } from "./game/state.ts";
+export type {
+  CharacterState,
+  CraftJob,
+  GameState,
+  GatherJob,
+  Inventory,
+  Job,
+} from "./game/state.ts";
 export { ActionRequest, type GameAction, type GameActionType } from "./protocol/actions.ts";
 export { LoginRequest, SignUpRequest } from "./protocol/auth.ts";
 export { LIMITS } from "./protocol/limits.ts";
@@ -25,6 +33,7 @@ export {
   CLIENT_MESSAGES,
   type ClientMessage,
   type ClientMessageType,
+  CraftStart,
   GatherStart,
   MoveTo,
   parseClientMessage,
@@ -33,5 +42,8 @@ export { FAILURE_REASONS, type FailureReason, isFailureReason } from "./protocol
 export { isCompatibleProtocol, PROTOCOL_VERSION } from "./protocol/version.ts";
 export { fail, ok, type RuleResult } from "./result.ts";
 export { type ActionFailure, applyAction } from "./rules/actions.ts";
-export { addItems, resolveJob, startGather } from "./rules/gather.ts";
+export { startCraft } from "./rules/craft.ts";
+export { startGather } from "./rules/gather.ts";
+export { addItems, hasItems, removeItems } from "./rules/inventory.ts";
+export { resolveJob } from "./rules/jobs.ts";
 export { maxWalkTiles, moveTo, tileDistance } from "./rules/move.ts";

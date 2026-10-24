@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { RECIPE_IDS } from "../data/recipes.ts";
 import { NODE_IDS } from "../data/resources.ts";
 import { LIMITS } from "./limits.ts";
 
@@ -11,6 +12,10 @@ export type MoveTo = z.infer<typeof MoveTo>;
 /** Intent: start gathering at a resource node next to the character. */
 export const GatherStart = z.strictObject({ nodeId: z.enum(NODE_IDS) });
 export type GatherStart = z.infer<typeof GatherStart>;
+
+/** Intent: start crafting a recipe (anywhere). */
+export const CraftStart = z.strictObject({ recipeId: z.enum(RECIPE_IDS) });
+export type CraftStart = z.infer<typeof CraftStart>;
 
 /** Intent: say something in the current region's chat. */
 export const ChatSend = z.strictObject({

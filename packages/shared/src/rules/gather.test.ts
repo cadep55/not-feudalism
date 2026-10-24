@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { GATHER_DURATION_MS, GATHER_YIELD, RESOURCE_NODES } from "../data/resources.ts";
 import type { GameState } from "../game/state.ts";
-import { addItems, resolveJob, startGather } from "./gather.ts";
+import { startGather } from "./gather.ts";
+import { addItems } from "./inventory.ts";
+import { resolveJob } from "./jobs.ts";
 
 const tree = RESOURCE_NODES.heartland_tree;
 const farm = RESOURCE_NODES.heartland_farm;
