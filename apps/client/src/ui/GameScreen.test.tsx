@@ -16,6 +16,7 @@ const canvas = vi.hoisted(() => ({
     sendPosition: (t: Tile) => Promise<MoveOutcome>;
     startGather: (nodeId: NodeId) => void | Promise<void>;
     turn: (facing: Direction) => Promise<boolean>;
+    openStorehouse: () => void;
   },
 }));
 vi.mock("../game/GameCanvas.tsx", () => ({
@@ -25,7 +26,7 @@ vi.mock("../game/GameCanvas.tsx", () => ({
   },
 }));
 
-/** The inventory's rows as text, e.g. ["Wood1"]. */
+/** The inventory's rows as text, e.g. ["Wood 1/5"]. */
 function inventoryRows() {
   const panel = screen.getByRole("region", { name: "Inventory" });
   return within(panel)
@@ -211,7 +212,7 @@ describe("GameScreen gathering", () => {
       await vi.advanceTimersByTimeAsync(1);
     });
     expect(api.getState).toHaveBeenCalledTimes(2);
-    expect(inventoryRows()).toEqual(["Wood1"]);
+    expect(inventoryRows()).toEqual(["Wood 1/5"]);
     expect(screen.queryByRole("status")).not.toBeInTheDocument();
     expect(latest().job).toBeNull();
   });
@@ -254,7 +255,7 @@ describe("GameScreen crafting", () => {
       sendAction: vi.fn(async () => ({ ok: true as const, value: started })),
     });
     await renderReady(api);
-    expect(inventoryRows()).toEqual(["Wood2", "Stone1"]);
+    expect(inventoryRows()).toEqual(["Wood 2/5", "Stone 1/5"]);
 
     await userEvent.click(screen.getByRole("button", { name: "Craft Rake" }));
 
@@ -278,7 +279,7 @@ describe("GameScreen crafting", () => {
     await userEvent.click(screen.getByRole("button", { name: "Craft Rake" }));
 
     expect(screen.getByRole("alert")).toHaveTextContent("You don't have the materials for that.");
-    expect(inventoryRows()).toEqual(["Wood2", "Stone1"]);
+    expect(inventoryRows()).toEqual(["Wood 2/5", "Stone 1/5"]);
   });
 
   it("re-reads state when the craft is due, so the rake appears", async () => {
@@ -299,7 +300,7 @@ describe("GameScreen crafting", () => {
       await vi.advanceTimersByTimeAsync(3_000 + JOB_SETTLE_MS);
     });
     expect(api.getState).toHaveBeenCalledTimes(2);
-    expect(inventoryRows()).toEqual(["Rake1"]);
+    expect(inventoryRows()).toEqual(["Rake 1/5"]);
     expect(screen.queryByRole("status")).not.toBeInTheDocument();
   });
 
@@ -322,5 +323,101 @@ describe("GameScreen crafting", () => {
     });
     expect(canvas.props?.job).toEqual(started.job);
     expect(screen.getByRole("status")).toHaveTextContent("Crafting rake…");
+  });
+});
+
+describe("GameScreen storehouse", () => {
+  /** Beside the storehouse at (15, 8) and facing it. */
+  const AT_STOREHOUSE: GameState = {
+    ...ALICE_STATE,
+    character: { ...ALICE_STATE.character, x: 14, y: 8, facing: "e" },
+    inventory: { wood: 3 },
+    storage: { stone: 7 },
+  };
+
+  function storehouseRows() {
+    const list = screen.queryByRole("list", { name: "In the storehouse" });
+    return list
+      ? within(list)
+          .getAllByRole("listitem")
+          .map((row) => row.textContent)
+      : [];
+  }
+
+  it("stores all carried wood and shows it in the storehouse", async () => {
+    const stored: GameState = { ...AT_STOREHOUSE, inventory: {}, storage: { wood: 3, stone: 7 } };
+    const api = fakeApi({
+      getState: vi.fn(async () => ({ ok: true as const, value: AT_STOREHOUSE })),
+      sendAction: vi.fn(async () => ({ ok: true as const, value: stored })),
+    });
+    await renderReady(api);
+    expect(inventoryRows()).toEqual(["Wood 3/5"]);
+
+    await userEvent.click(screen.getByRole("button", { name: "Store Wood" }));
+
+    expect(api.sendAction).toHaveBeenCalledWith({
+      type: "storehouse.store",
+      payload: { item: "wood", quantity: 3 },
+    });
+    expect(inventoryRows()).toEqual([]);
+    expect(storehouseRows()).toEqual(["Wood 3/100Take", "Stone 7/100Take"]);
+  });
+
+  it("takes as much stone as fits in the character's hands", async () => {
+    const taken: GameState = {
+      ...AT_STOREHOUSE,
+      inventory: { wood: 3, stone: 5 },
+      storage: { stone: 2 },
+    };
+    const api = fakeApi({
+      getState: vi.fn(async () => ({ ok: true as const, value: AT_STOREHOUSE })),
+      sendAction: vi.fn(async () => ({ ok: true as const, value: taken })),
+    });
+    await renderReady(api);
+
+    await userEvent.click(screen.getByRole("button", { name: "Take Stone" }));
+
+    expect(api.sendAction).toHaveBeenCalledWith({
+      type: "storehouse.take",
+      payload: { item: "stone", quantity: 5 },
+    });
+    expect(inventoryRows()).toEqual(["Wood 3/5", "Stone 5/5"]);
+    expect(storehouseRows()).toEqual(["Stone 2/100Take"]);
+    expect(screen.getByRole("button", { name: "Take Stone" })).toBeDisabled();
+  });
+
+  it("explains a hands_full refusal", async () => {
+    const api = fakeApi({
+      getState: vi.fn(async () => ({ ok: true as const, value: AT_STOREHOUSE })),
+      sendAction: vi.fn(async () => ({ ok: false as const, reason: "hands_full" as const })),
+    });
+    await renderReady(api);
+
+    await userEvent.click(screen.getByRole("button", { name: "Take Stone" }));
+
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "Your hands are full (5 max). Store some in the storehouse.",
+    );
+    expect(inventoryRows()).toEqual(["Wood 3/5"]);
+  });
+
+  it("explains a not_at_storehouse refusal", async () => {
+    const api = fakeApi({
+      getState: vi.fn(async () => ({ ok: true as const, value: AT_STOREHOUSE })),
+      sendAction: vi.fn(async () => ({ ok: false as const, reason: "not_at_storehouse" as const })),
+    });
+    await renderReady(api);
+    await userEvent.click(screen.getByRole("button", { name: "Store Wood" }));
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "Stand next to the storehouse and face it.",
+    );
+  });
+
+  it("highlights the storehouse panel when the game says the character arrived", async () => {
+    const { props } = await renderReady();
+    const panel = screen.getByRole("region", { name: "Storehouse" });
+    expect(panel).not.toHaveClass("highlighted");
+    act(() => props.openStorehouse());
+    expect(panel).toHaveClass("highlighted");
   });
 });

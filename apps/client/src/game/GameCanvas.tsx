@@ -11,13 +11,22 @@ type Props = {
   startGather: (nodeId: NodeId) => void;
   /** Turns the character in place; resolves true once the server accepts. */
   turn: (facing: Direction) => Promise<boolean>;
+  /** Called once the character stands beside the storehouse, facing it. */
+  openStorehouse: () => void;
 };
 
 /**
  * Hosts the Phaser game. Phaser is loaded lazily so the login screen stays
  * small and tests of React screens never load a canvas engine.
  */
-export function GameCanvas({ character, job, sendPosition, startGather, turn }: Props) {
+export function GameCanvas({
+  character,
+  job,
+  sendPosition,
+  startGather,
+  turn,
+  openStorehouse,
+}: Props) {
   const parent = useRef<HTMLDivElement>(null);
   // The game is created once per character; it always calls the latest callbacks.
   const send = useRef(sendPosition);
@@ -26,6 +35,8 @@ export function GameCanvas({ character, job, sendPosition, startGather, turn }: 
   gather.current = startGather;
   const turnTo = useRef(turn);
   turnTo.current = turn;
+  const open = useRef(openStorehouse);
+  open.current = openStorehouse;
   const latestJob = useRef(job);
   latestJob.current = job;
   const initial = useRef(character);
@@ -41,6 +52,7 @@ export function GameCanvas({ character, job, sendPosition, startGather, turn }: 
         sendPosition: (tile) => send.current(tile),
         startGather: (nodeId) => gather.current(nodeId),
         turn: (facing) => turnTo.current(facing),
+        openStorehouse: () => open.current(),
       });
     });
     return () => {

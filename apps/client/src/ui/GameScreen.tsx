@@ -1,4 +1,4 @@
-import type { Direction, GameState, NodeId, RecipeId } from "@nf/shared";
+import type { Direction, GameState, ItemId, NodeId, RecipeId } from "@nf/shared";
 import { useCallback, useEffect, useState } from "react";
 import type { MoveOutcome } from "../game/createGame.ts";
 import { GameCanvas } from "../game/GameCanvas.tsx";
@@ -8,6 +8,7 @@ import type { Api, Player } from "../net/api.ts";
 import { CraftingPanel } from "./CraftingPanel.tsx";
 import { InventoryPanel } from "./InventoryPanel.tsx";
 import { FAILURE_MESSAGES } from "./messages.ts";
+import { StorehousePanel } from "./StorehousePanel.tsx";
 
 /** How long a refusal message stays on screen. */
 export const NOTICE_MS = 2_500;
@@ -23,6 +24,7 @@ type Load = { status: "loading" } | { status: "error" } | { status: "ready"; sta
 export function GameScreen({ api, player, onLogOut }: Props) {
   const [load, setLoad] = useState<Load>({ status: "loading" });
   const [notice, setNotice] = useState<string | null>(null);
+  const [storehouseHighlighted, setStorehouseHighlighted] = useState(false);
   const showState = useCallback((state: GameState) => setLoad({ status: "ready", state }), []);
 
   useEffect(() => {
@@ -61,6 +63,12 @@ export function GameScreen({ api, player, onLogOut }: Props) {
     const timer = setTimeout(() => setNotice(null), NOTICE_MS);
     return () => clearTimeout(timer);
   }, [notice]);
+
+  useEffect(() => {
+    if (!storehouseHighlighted) return;
+    const timer = setTimeout(() => setStorehouseHighlighted(false), NOTICE_MS);
+    return () => clearTimeout(timer);
+  }, [storehouseHighlighted]);
 
   const sendPosition = useCallback(
     async (tile: Tile): Promise<MoveOutcome> => {
@@ -122,6 +130,29 @@ export function GameScreen({ api, player, onLogOut }: Props) {
     [api, showState],
   );
 
+  // Moving items between hands and storehouse is instant: the reply carries both inventories.
+  const transfer = useCallback(
+    async (type: "storehouse.store" | "storehouse.take", item: ItemId, quantity: number) => {
+      const result = await api.sendAction({ type, payload: { item, quantity } });
+      if (result.ok) {
+        showState(result.value);
+        setNotice(null);
+      } else {
+        setNotice(FAILURE_MESSAGES[result.reason]);
+      }
+    },
+    [api, showState],
+  );
+  const store = useCallback(
+    (item: ItemId, quantity: number) => transfer("storehouse.store", item, quantity),
+    [transfer],
+  );
+  const take = useCallback(
+    (item: ItemId, quantity: number) => transfer("storehouse.take", item, quantity),
+    [transfer],
+  );
+  const openStorehouse = useCallback(() => setStorehouseHighlighted(true), []);
+
   return (
     <div className="game">
       <header>
@@ -147,6 +178,7 @@ export function GameScreen({ api, player, onLogOut }: Props) {
               sendPosition={sendPosition}
               startGather={startGather}
               turn={turn}
+              openStorehouse={openStorehouse}
             />
             <div className="side">
               <InventoryPanel inventory={load.state.inventory} job={load.state.job} />
@@ -154,6 +186,12 @@ export function GameScreen({ api, player, onLogOut }: Props) {
                 inventory={load.state.inventory}
                 job={load.state.job}
                 onCraft={startCraft}
+              />
+              <StorehousePanel
+                state={load.state}
+                highlighted={storehouseHighlighted}
+                onStore={store}
+                onTake={take}
               />
             </div>
           </div>
@@ -164,7 +202,7 @@ export function GameScreen({ api, player, onLogOut }: Props) {
           )}
           <p className="hint">
             Click a tile to walk there, or use the arrow keys / WASD. Click a tree, rock or field to
-            gather.
+            gather, or the storehouse to store and take items.
           </p>
         </>
       )}

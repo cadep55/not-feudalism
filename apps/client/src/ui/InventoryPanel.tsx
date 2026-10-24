@@ -1,11 +1,11 @@
-import { type Inventory, ITEM_IDS, ITEMS, type Job, RESOURCE_NODES } from "@nf/shared";
+import { CARRY_LIMIT, type Inventory, ITEM_IDS, ITEMS, type Job, RESOURCE_NODES } from "@nf/shared";
 
 type Props = {
   inventory: Inventory;
   job: Job | null;
 };
 
-/** What the character carries, plus what it's busy gathering (crafting shows in the CraftingPanel). */
+/** What the character carries (out of the carry limit), plus what it's busy gathering (crafting shows in the CraftingPanel). */
 export function InventoryPanel({ inventory, job }: Props) {
   const held = ITEM_IDS.flatMap((id) => {
     const count = inventory[id] ?? 0;
@@ -20,9 +20,11 @@ export function InventoryPanel({ inventory, job }: Props) {
       ) : (
         <ul>
           {held.map((item) => (
-            <li key={item.id}>
-              <span>{item.name}</span>
-              <span className="count">{item.count}</span>
+            <li key={item.id} className={item.count >= CARRY_LIMIT ? "full" : undefined}>
+              <span>{item.name}</span>{" "}
+              <span className="count">
+                {item.count}/{CARRY_LIMIT}
+              </span>
             </li>
           ))}
         </ul>
