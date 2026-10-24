@@ -29,9 +29,24 @@ How Not Feudalism fits together: the pieces, how players talk to the server, how
 - **Shared (`packages/shared`):** game rules, data tables, TypeScript types and Zod schemas. Pure code that runs identically in the browser and on the server.
 - **DB (`packages/db`):** Drizzle schema, migrations and seed data. Only the server imports it.
 
-## 2. Multiplayer model
+## 2. Game model
 
-### Authoritative server, intent-based protocol
+### Phase 1: single player over HTTP
+
+Development starts with single player ([ADR 0002](decisions/0002-single-player-first.md)). Everything in this section still applies, except the transport: instead of rooms, the client calls two HTTP routes.
+
+| Route | Does |
+|---|---|
+| `GET /game/state` | The logged-in character's state: position, gold, inventory, active jobs |
+| `POST /game/actions` | One intent `{ type, payload, requestId }`: Zod-parse, load state, run the shared rule, save in one transaction, return the new state |
+
+Each character has its own world (resource nodes, merchant stock). The services behind `/game/actions` are the same ones rooms will call in Phase 2, so only the transport is added later.
+
+### Phase 2: multiplayer
+
+The shared world. The rules, data model and services below apply from Phase 1; rooms and broadcasting are added in Phase 2.
+
+#### Authoritative server, intent-based protocol
 
 The client never decides outcomes. It sends **intents**, and the server validates and applies them:
 
@@ -47,7 +62,7 @@ client  ◀── state patch (inventory, job with completesAt) ─────�
 
 The client may *predict* a result to feel snappy (for example, greying out the materials straight away) but must accept whatever the server sends back.
 
-### Timer-based world with real-time presence (recommended answer to "real-time or turn-based?")
+#### Timer-based world with real-time presence (recommended answer to "real-time or turn-based?")
 
 - **Actions take real time:** farming, crafting, travelling, building and training troops are jobs with `startedAt` and `completesAt`. Progress is computed from the clock (`progress = (now - startedAt) / duration`), never ticked.
 - **Lazy resolution:** a job is resolved when anyone looks at it (the player logs in, opens the screen, or another system needs it), or by a lightweight scheduler that wakes for the next due job. Resource nodes regenerate the same way: store `lastHarvestedAt` and compute the current amount on read.
@@ -56,7 +71,7 @@ The client may *predict* a result to feel snappy (for example, greying out the m
 
 This gives a persistent world that keeps running while players are offline, at very low server cost.
 
-### Rooms
+#### Rooms
 
 | Room | Who joins | Holds |
 |---|---|---|
@@ -67,7 +82,7 @@ This gives a persistent world that keeps running while players are offline, at v
 
 Room state only holds what's needed to draw the screen. **The database is the durable truth**, so a room can crash and be rebuilt from the DB.
 
-### Messages
+#### Messages
 
 - Every client→server message type is a Zod schema in `packages/shared/src/protocol/`, named `domain.verb` (`trade.offer`, `craft.start`, `move.to`).
 - Server→client updates come through Colyseus state sync (automatic diffs), plus occasional one-off events (`toast`, `battle.result`).
