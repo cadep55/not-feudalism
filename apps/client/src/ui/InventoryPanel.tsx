@@ -5,7 +5,7 @@ type Props = {
   job: Job | null;
 };
 
-/** What the character carries, plus what it's busy gathering. */
+/** What the character carries, plus what it's busy gathering (crafting shows in the CraftingPanel). */
 export function InventoryPanel({ inventory, job }: Props) {
   const held = ITEM_IDS.flatMap((id) => {
     const count = inventory[id] ?? 0;
@@ -13,7 +13,7 @@ export function InventoryPanel({ inventory, job }: Props) {
   });
 
   return (
-    <section className="inventory" aria-labelledby="inventory-title">
+    <section className="panel inventory" aria-labelledby="inventory-title">
       <h2 id="inventory-title">Inventory</h2>
       {held.length === 0 ? (
         <p className="empty">Empty — click a tree or rock to gather.</p>
@@ -27,7 +27,7 @@ export function InventoryPanel({ inventory, job }: Props) {
           ))}
         </ul>
       )}
-      {job && (
+      {job?.kind === "gather" && (
         <p className="working" role="status">
           Gathering {ITEMS[RESOURCE_NODES[job.nodeId].yields].name.toLowerCase()}…
         </p>

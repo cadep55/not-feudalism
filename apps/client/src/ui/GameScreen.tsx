@@ -1,10 +1,11 @@
-import type { GameState, NodeId } from "@nf/shared";
+import type { GameState, NodeId, RecipeId } from "@nf/shared";
 import { useCallback, useEffect, useState } from "react";
 import type { MoveOutcome } from "../game/createGame.ts";
 import { GameCanvas } from "../game/GameCanvas.tsx";
 import { refreshDelay } from "../game/gathering.ts";
 import type { Tile } from "../game/movement.ts";
 import type { Api, Player } from "../net/api.ts";
+import { CraftingPanel } from "./CraftingPanel.tsx";
 import { InventoryPanel } from "./InventoryPanel.tsx";
 import { FAILURE_MESSAGES } from "./messages.ts";
 
@@ -64,7 +65,7 @@ export function GameScreen({ api, player, onLogOut }: Props) {
   const sendPosition = useCallback(
     async (tile: Tile): Promise<MoveOutcome> => {
       const result = await api.sendAction({ type: "move.to", payload: tile });
-      // The reply carries the job too: walking away cancels a gather.
+      // The reply carries the job too: walking away cancels a gather (a craft keeps going).
       if (result.ok) {
         showState(result.value);
         return { ok: true };
@@ -82,6 +83,20 @@ export function GameScreen({ api, player, onLogOut }: Props) {
   const startGather = useCallback(
     async (nodeId: NodeId) => {
       const result = await api.sendAction({ type: "gather.start", payload: { nodeId } });
+      if (result.ok) {
+        showState(result.value);
+        setNotice(null);
+      } else {
+        setNotice(FAILURE_MESSAGES[result.reason]);
+      }
+    },
+    [api, showState],
+  );
+
+  // Materials leave the inventory as soon as the server accepts; the item arrives when the job ends.
+  const startCraft = useCallback(
+    async (recipeId: RecipeId) => {
+      const result = await api.sendAction({ type: "craft.start", payload: { recipeId } });
       if (result.ok) {
         showState(result.value);
         setNotice(null);
@@ -117,7 +132,14 @@ export function GameScreen({ api, player, onLogOut }: Props) {
               sendPosition={sendPosition}
               startGather={startGather}
             />
-            <InventoryPanel inventory={load.state.inventory} job={load.state.job} />
+            <div className="side">
+              <InventoryPanel inventory={load.state.inventory} job={load.state.job} />
+              <CraftingPanel
+                inventory={load.state.inventory}
+                job={load.state.job}
+                onCraft={startCraft}
+              />
+            </div>
           </div>
           {notice && (
             <p role="alert" className="notice">

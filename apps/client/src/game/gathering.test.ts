@@ -1,4 +1,4 @@
-import { type GatherJob, RESOURCE_NODES, type ResourceNode } from "@nf/shared";
+import { type CraftJob, type GatherJob, RESOURCE_NODES, type ResourceNode } from "@nf/shared";
 import { describe, expect, it } from "vitest";
 import {
   JOB_SETTLE_MS,
@@ -8,6 +8,7 @@ import {
   nodesIn,
   readyToGather,
   refreshDelay,
+  walkingCancels,
 } from "./gathering.ts";
 
 const REGION = { width: 25, height: 18 };
@@ -85,6 +86,29 @@ describe("jobProgress and refreshDelay", () => {
   it("waits until just after the job ends", () => {
     expect(refreshDelay(job, 1_000)).toBe(3_000 + JOB_SETTLE_MS);
     expect(refreshDelay(job, 10_000)).toBe(JOB_SETTLE_MS);
+  });
+});
+
+describe("craft jobs", () => {
+  const craft: CraftJob = { kind: "craft", recipeId: "rake", startedAt: 1_000, completesAt: 4_000 };
+
+  it("fill and refresh on the same timestamps as gathers", () => {
+    expect(jobProgress(craft, 2_500)).toBe(0.5);
+    expect(refreshDelay(craft, 1_000)).toBe(3_000 + JOB_SETTLE_MS);
+  });
+});
+
+describe("walkingCancels", () => {
+  it("is true for a gather, which walking away ends", () => {
+    expect(
+      walkingCancels({ kind: "gather", nodeId: "heartland_tree", startedAt: 0, completesAt: 1 }),
+    ).toBe(true);
+  });
+
+  it("is false for a craft, which keeps going on the move", () => {
+    expect(walkingCancels({ kind: "craft", recipeId: "rake", startedAt: 0, completesAt: 1 })).toBe(
+      false,
+    );
   });
 });
 

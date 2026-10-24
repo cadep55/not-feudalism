@@ -140,7 +140,12 @@ button:disabled {
   justify-content: center;
 }
 
-.inventory {
+.side {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.panel {
   width: 200px;
   box-sizing: border-box;
   background: var(--parchment);
@@ -150,14 +155,14 @@ button:disabled {
   box-shadow: 0 4px 12px #0005;
 }
 
-.inventory h2 {
+.panel h2 {
   margin: 0 0 0.5rem;
   font-size: 1.1rem;
   border-bottom: 2px solid var(--wood);
   padding-bottom: 0.25rem;
 }
 
-.inventory ul {
+.panel ul {
   list-style: none;
   margin: 0;
   padding: 0;
@@ -165,25 +170,57 @@ button:disabled {
   gap: 0.25rem;
 }
 
-.inventory li {
+.panel li {
   display: flex;
   justify-content: space-between;
 }
 
-.inventory .count {
+.panel .count {
   font-weight: bold;
 }
 
-.inventory .empty,
-.inventory .working {
+.panel .empty,
+.panel .working {
   margin: 0;
   font-size: 0.9rem;
 }
 
-.inventory .working {
+.panel .working {
   margin-top: 0.5rem;
   font-style: italic;
   color: var(--wood-dark);
+}
+
+.crafting li.recipe {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.crafting h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.crafting li.missing {
+  color: var(--error);
+}
+
+.crafting button {
+  padding: 0.3rem 0.75rem;
+  justify-self: start;
+}
+
+.crafting button:disabled {
+  cursor: not-allowed;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 
 .notice {

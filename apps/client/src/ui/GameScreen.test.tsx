@@ -1,5 +1,6 @@
 import type { CharacterState, GameState, Job, NodeId } from "@nf/shared";
-import { act, render, screen } from "@testing-library/react";
+import { act, render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { MoveOutcome } from "../game/createGame.ts";
 import { JOB_SETTLE_MS } from "../game/gathering.ts";
@@ -22,6 +23,14 @@ vi.mock("../game/GameCanvas.tsx", () => ({
     return <div data-testid="game-canvas" />;
   },
 }));
+
+/** The inventory's rows as text, e.g. ["Wood1"]. */
+function inventoryRows() {
+  const panel = screen.getByRole("region", { name: "Inventory" });
+  return within(panel)
+    .queryAllByRole("listitem")
+    .map((row) => row.textContent);
+}
 
 async function renderReady(api = fakeApi()) {
   render(<GameScreen api={api} player={ALICE} onLogOut={vi.fn()} />);
@@ -153,7 +162,7 @@ describe("GameScreen gathering", () => {
       await vi.advanceTimersByTimeAsync(1);
     });
     expect(api.getState).toHaveBeenCalledTimes(2);
-    expect(screen.getByRole("listitem")).toHaveTextContent("Wood1");
+    expect(inventoryRows()).toEqual(["Wood1"]);
     expect(screen.queryByRole("status")).not.toBeInTheDocument();
     expect(latest().job).toBeNull();
   });
@@ -171,5 +180,98 @@ describe("GameScreen gathering", () => {
       await latest().sendPosition({ x: 9, y: 9 });
     });
     expect(latest().job).toBeNull();
+  });
+});
+
+describe("GameScreen crafting", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  const MATERIALS: GameState = { ...ALICE_STATE, inventory: { wood: 2, stone: 1 } };
+
+  function crafting(now: number): GameState {
+    return {
+      ...ALICE_STATE,
+      inventory: {},
+      job: { kind: "craft", recipeId: "rake", startedAt: now, completesAt: now + 3_000 },
+    };
+  }
+
+  it("sends craft.start and shows the materials gone and the job running", async () => {
+    const started = crafting(Date.now());
+    const api = fakeApi({
+      getState: vi.fn(async () => ({ ok: true as const, value: MATERIALS })),
+      sendAction: vi.fn(async () => ({ ok: true as const, value: started })),
+    });
+    await renderReady(api);
+    expect(inventoryRows()).toEqual(["Wood2", "Stone1"]);
+
+    await userEvent.click(screen.getByRole("button", { name: "Craft Rake" }));
+
+    expect(api.sendAction).toHaveBeenCalledWith({
+      type: "craft.start",
+      payload: { recipeId: "rake" },
+    });
+    expect(inventoryRows()).toEqual([]);
+    expect(canvas.props?.job).toEqual(started.job);
+    expect(screen.getByRole("status")).toHaveTextContent("Crafting rake…");
+    expect(screen.getByRole("button", { name: "Craft Rake" })).toBeDisabled();
+  });
+
+  it("explains a missing_materials refusal", async () => {
+    const api = fakeApi({
+      getState: vi.fn(async () => ({ ok: true as const, value: MATERIALS })),
+      sendAction: vi.fn(async () => ({ ok: false as const, reason: "missing_materials" as const })),
+    });
+    await renderReady(api);
+
+    await userEvent.click(screen.getByRole("button", { name: "Craft Rake" }));
+
+    expect(screen.getByRole("alert")).toHaveTextContent("You don't have the materials for that.");
+    expect(inventoryRows()).toEqual(["Wood2", "Stone1"]);
+  });
+
+  it("re-reads state when the craft is due, so the rake appears", async () => {
+    const api = fakeApi({ getState: vi.fn(async () => ({ ok: true as const, value: MATERIALS })) });
+    await renderReady(api);
+    vi.useFakeTimers();
+    const finished: GameState = { ...ALICE_STATE, inventory: { rake: 1 }, job: null };
+    vi.mocked(api.sendAction).mockResolvedValueOnce({ ok: true, value: crafting(Date.now()) });
+    vi.mocked(api.getState).mockResolvedValue({ ok: true, value: finished });
+
+    await act(async () => {
+      screen.getByRole("button", { name: "Craft Rake" }).click();
+    });
+    expect(screen.getByRole("status")).toHaveTextContent("Crafting rake…");
+    expect(api.getState).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(3_000 + JOB_SETTLE_MS);
+    });
+    expect(api.getState).toHaveBeenCalledTimes(2);
+    expect(inventoryRows()).toEqual(["Rake1"]);
+    expect(screen.queryByRole("status")).not.toBeInTheDocument();
+  });
+
+  it("keeps the craft running while walking", async () => {
+    const started = crafting(Date.now());
+    const api = fakeApi({
+      getState: vi.fn(async () => ({ ok: true as const, value: MATERIALS })),
+      sendAction: vi.fn(async () => ({ ok: true as const, value: started })),
+    });
+    await renderReady(api);
+    await userEvent.click(screen.getByRole("button", { name: "Craft Rake" }));
+
+    // The server's reply to a move still carries the craft job.
+    vi.mocked(api.sendAction).mockResolvedValueOnce({
+      ok: true,
+      value: { ...started, character: { ...started.character, x: 9, y: 9 } },
+    });
+    await act(async () => {
+      await canvas.props?.sendPosition({ x: 9, y: 9 });
+    });
+    expect(canvas.props?.job).toEqual(started.job);
+    expect(screen.getByRole("status")).toHaveTextContent("Crafting rake…");
   });
 });

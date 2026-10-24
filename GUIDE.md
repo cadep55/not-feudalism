@@ -102,6 +102,7 @@ Record agreed decisions here with the date.
 - **2026-10-24:** Build **single player first, then multiplayer**. Accounts stay for login and saves. The server runs the game rules in both phases, so single-player progress carries into multiplayer. ([ADR 0002](docs/decisions/0002-single-player-first.md))
 - **2026-10-24:** Character names are 3–16 characters, letters, digits and underscores, starting with a letter.
 - **2026-10-24:** First resources: one **tree (wood)**, **rock (stone)** and **farm field (wheat)** on the heartland map. They never run out. Left-click to gather; each gather takes **3 seconds** and gives 1. Wheat needs a **rake**, the first tool, crafted from **2 wood + 1 stone**.
+- **2026-10-24:** Crafting takes **3 seconds** and works **anywhere** (no workbench yet). It keeps going while you walk; gathering is cancelled if you walk away. One job at a time.
 
 ## Ideas Parking Lot
 
