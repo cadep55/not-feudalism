@@ -1,0 +1,113 @@
+import { describe, expect, it } from "vitest";
+import { GATHER_DURATION_MS, GATHER_YIELD, RESOURCE_NODES } from "../data/resources.ts";
+import type { GameState } from "../game/state.ts";
+import { addItems, resolveJob, startGather } from "./gather.ts";
+
+const tree = RESOURCE_NODES.heartland_tree;
+const farm = RESOURCE_NODES.heartland_farm;
+const NOW = 1_000_000;
+
+function stateAt(
+  position: { x: number; y: number },
+  overrides: Partial<GameState> = {},
+): GameState {
+  return {
+    character: {
+      id: "c1",
+      name: "Alice",
+      rank: "peasant",
+      gold: 0,
+      region: "heartland",
+      ...position,
+      movedAt: 0,
+    },
+    inventory: {},
+    job: null,
+    ...overrides,
+  };
+}
+
+describe("startGather", () => {
+  it("starts a timed job when standing next to the node, diagonals included", () => {
+    for (const spot of [
+      { x: tree.x + 1, y: tree.y },
+      { x: tree.x - 1, y: tree.y - 1 },
+      { x: tree.x, y: tree.y },
+    ]) {
+      expect(startGather(stateAt(spot), "heartland_tree", NOW)).toEqual({
+        ok: true,
+        value: stateAt(spot, {
+          job: {
+            kind: "gather",
+            nodeId: "heartland_tree",
+            startedAt: NOW,
+            completesAt: NOW + GATHER_DURATION_MS,
+          },
+        }),
+      });
+    }
+  });
+
+  it("refuses when the character is more than one tile away", () => {
+    expect(startGather(stateAt({ x: tree.x + 2, y: tree.y }), "heartland_tree", NOW)).toEqual({
+      ok: false,
+      reason: "too_far_away",
+    });
+  });
+
+  it("refuses a second job while one is running", () => {
+    const busy = startGather(stateAt({ x: tree.x, y: tree.y + 1 }), "heartland_tree", NOW);
+    if (!busy.ok) throw new Error("setup failed");
+    expect(startGather(busy.value, "heartland_tree", NOW + 1)).toEqual({
+      ok: false,
+      reason: "busy",
+    });
+  });
+
+  it("needs a rake for the farm", () => {
+    const nextToFarm = { x: farm.x + 1, y: farm.y };
+    expect(startGather(stateAt(nextToFarm), "heartland_farm", NOW)).toEqual({
+      ok: false,
+      reason: "missing_tool",
+    });
+    expect(
+      startGather(stateAt(nextToFarm, { inventory: { rake: 1 } }), "heartland_farm", NOW).ok,
+    ).toBe(true);
+  });
+});
+
+describe("resolveJob", () => {
+  const gathering = stateAt(
+    { x: tree.x + 1, y: tree.y },
+    {
+      inventory: { wood: 2 },
+      job: { kind: "gather", nodeId: "heartland_tree", startedAt: NOW, completesAt: NOW + 3_000 },
+    },
+  );
+
+  it("does nothing before the job's time", () => {
+    expect(resolveJob(gathering, NOW + 2_999)).toBe(gathering);
+  });
+
+  it("adds the node's yield and clears the job when time is up, even long after", () => {
+    for (const later of [NOW + 3_000, NOW + 86_400_000]) {
+      expect(resolveJob(gathering, later)).toEqual({
+        ...gathering,
+        inventory: { wood: 2 + GATHER_YIELD },
+        job: null,
+      });
+    }
+  });
+
+  it("leaves an idle state alone", () => {
+    const idle = stateAt({ x: 0, y: 0 });
+    expect(resolveJob(idle, NOW)).toBe(idle);
+  });
+});
+
+describe("addItems", () => {
+  it("adds to an existing count or starts one", () => {
+    expect(addItems({ wood: 1 }, "wood", 2)).toEqual({ wood: 3 });
+    expect(addItems({ wood: 1 }, "stone", 1)).toEqual({ wood: 1, stone: 1 });
+  });
+});

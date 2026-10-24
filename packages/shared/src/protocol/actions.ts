@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { MoveTo } from "./messages.ts";
+import { GatherStart, MoveTo } from "./messages.ts";
 
 /**
  * One player action sent to POST /game/actions (Phase 1, ADR 0002).
@@ -9,9 +9,17 @@ import { MoveTo } from "./messages.ts";
  */
 export const ActionRequest = z.discriminatedUnion("type", [
   z.strictObject({ requestId: z.uuid(), type: z.literal("move.to"), payload: MoveTo }),
+  z.strictObject({ requestId: z.uuid(), type: z.literal("gather.start"), payload: GatherStart }),
 ]);
 export type ActionRequest = z.infer<typeof ActionRequest>;
 
-/** An action without its requestId: what game rules receive. */
-export type GameAction = Omit<ActionRequest, "requestId">;
+/**
+ * An action without its requestId: what game rules receive. Distributes over the
+ * union (a plain Omit would merge the members and lose which payload goes with which type).
+ */
+export type GameAction = ActionRequest extends infer Request
+  ? Request extends ActionRequest
+    ? Omit<Request, "requestId">
+    : never
+  : never;
 export type GameActionType = GameAction["type"];
