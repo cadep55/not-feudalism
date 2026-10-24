@@ -17,4 +17,11 @@ A multiplayer medieval strategy game played in the browser, inspired by Feudalis
 
 ## Getting started
 
-Coming in Step 4 of the [infrastructure plan](docs/INFRASTRUCTURE_PLAN.md).
+You need Node.js 24+ and pnpm (see [AGENTS.md → Setup](AGENTS.md#setup)).
+
+```bash
+pnpm install
+pnpm check
+```
+
+There's nothing playable yet. `pnpm dev` (local database, server and client) arrives in Step 4 of the [infrastructure plan](docs/INFRASTRUCTURE_PLAN.md).

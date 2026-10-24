@@ -1,0 +1,18 @@
+{
+  "name": "@nf/db",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Database schema, migrations and seed scripts",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p .",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@nf/config": "workspace:*"
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "name": "@nf/client",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Browser game client: Phaser world and React UI",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p .",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "@nf/shared": "workspace:*"
+  },
+  "devDependencies": {
+    "@nf/config": "workspace:*"
+  }
+}

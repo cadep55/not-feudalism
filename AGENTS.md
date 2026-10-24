@@ -2,7 +2,7 @@
 
 This is the shared playbook for every contributor, both humans and AI coding agents (Claude Code, Codex, Cursor, Copilot and others). Read it before you change anything. If something here is wrong or out of date, fix it in the same PR as the change that made it wrong.
 
-> **Status:** the tech stack is **Proposed** (see [ADR 0001](docs/decisions/0001-tech-stack.md)) until both owners accept it. Until the code exists, the commands and folders below describe the target layout set up in [docs/INFRASTRUCTURE_PLAN.md](docs/INFRASTRUCTURE_PLAN.md).
+> **Status:** the tech stack is **Proposed** (see [ADR 0001](docs/decisions/0001-tech-stack.md)) until both owners accept it. The monorepo, tooling and CI exist (Steps 1–3 of [docs/INFRASTRUCTURE_PLAN.md](docs/INFRASTRUCTURE_PLAN.md)). Folders and commands marked *(planned)* arrive in later steps.
 
 ## The game in one paragraph
 
@@ -31,35 +31,49 @@ A persistent online medieval world in the spirit of Feudalism 2. Players start a
 - **Lint/format:** Biome
 - **CI/CD:** GitHub Actions; client on Cloudflare Pages, server and Postgres on Railway
 
-## Repository layout (target)
+## Setup
+
+1. **Node.js 24 or newer** (the project targets 24 LTS; see `.nvmrc`).
+2. **pnpm**, at the version pinned in `package.json` → `packageManager`. On Node 24 run `corepack enable`. On Node 25+ (no Corepack) install it with `winget install pnpm.pnpm` (Windows) or `npm install -g pnpm`.
+3. `pnpm install`. This also installs the git hooks (lefthook): Biome formats staged files on commit, and `pnpm check` runs before push.
+4. Editor: VS Code with the recommended extensions in `.vscode/extensions.json` (Biome formats on save).
+
+## Repository layout
 
 ```
 apps/
-  client/        Phaser + React browser game (Vite)
-  server/        Colyseus rooms + Express HTTP API
+  client/        Phaser + React browser game (Vite)            — placeholder for now
+  server/        Colyseus rooms + Express HTTP API             — placeholder for now
 packages/
   shared/        Game rules, data tables, types, Zod schemas (pure, no I/O)
-  db/            Drizzle schema, migrations, seed scripts
-  config/        Shared tsconfig and tooling presets
-e2e/             Playwright end-to-end tests
+  db/            Drizzle schema, migrations, seed scripts      — placeholder for now
+  config/        Shared tsconfig presets (base, node, browser)
+e2e/             Playwright end-to-end tests                   (planned)
 docs/            Architecture, conventions, plans, decision records
-.github/         CI workflows, PR/issue templates, CODEOWNERS
-docker-compose.yml   Local Postgres (and Redis later)
+.github/         CI workflows, PR/issue templates, CODEOWNERS, Dependabot
+docker-compose.yml   Local Postgres, Redis later               (planned)
 ```
 
-## Commands (target)
+Workspace packages are named `@nf/<folder>` and export their TypeScript source directly (`"exports": "./src/index.ts"`). Import across packages by name (`import { ok } from "@nf/shared"`), never by relative path.
+
+## Commands
 
 ```bash
-pnpm install          # install everything
-pnpm dev              # start Postgres (Docker), server and client with hot reload
+pnpm install          # install everything (and git hooks)
 pnpm check            # lint + typecheck + unit tests; must pass before every PR
 pnpm test             # all Vitest suites
-pnpm test:e2e         # Playwright end-to-end tests
-pnpm db:migrate       # apply database migrations
-pnpm db:generate      # generate a migration after changing packages/db/src/schema
-pnpm db:seed          # load development seed data
+pnpm typecheck        # TypeScript in every package
+pnpm lint             # Biome lint + format check
+pnpm format           # Biome auto-fix: format, organise imports, safe lint fixes
 pnpm build            # production build of every app
+pnpm dev              # start Postgres (Docker), server and client with hot reload   (planned)
+pnpm test:e2e         # Playwright end-to-end tests                                  (planned)
+pnpm db:migrate       # apply database migrations                                    (planned)
+pnpm db:generate      # generate a migration after changing packages/db/src/schema   (planned)
+pnpm db:seed          # load development seed data                                   (planned)
 ```
+
+Run one package's task with a filter, e.g. `pnpm --filter @nf/shared test`.
 
 ## Golden rules
 
@@ -99,7 +113,7 @@ These are non-negotiable. A PR that breaks one gets sent back.
 ## Extra rules for AI agents
 
 - **Stay in scope.** Do the task in the issue or prompt. Note unrelated problems in the PR description or a new issue instead of fixing them in passing.
-- **Don't add dependencies casually.** Prefer what's already installed. If you need a new package, say why in the PR and pick a well-maintained one. Pin exact versions (pnpm does this with `save-exact`).
+- **Don't add dependencies casually.** Prefer what's already installed. If you need a new package, say why in the PR and pick a well-maintained one. Versions are pinned exactly (`savePrefix: ""` in `pnpm-workspace.yaml`). If pnpm says a dependency's install script was blocked, don't just approve it: check what the script does and explain in the PR.
 - **Never weaken a test to make it pass,** never skip or delete failing tests without explaining why in the PR, and never disable lint rules inline without a comment saying why.
 - **Never touch secrets, production data or deploy settings.** Never run migrations against staging or production. CI does that.
 - **Don't push to `main`.** Always use a branch and a PR.
@@ -112,3 +126,14 @@ These are non-negotiable. A PR that breaks one gets sent back.
 |---|---|
 | Repo and infrastructure | cadep55 |
 | Game design, programming, art | TBD (see Division of Work in [GUIDE.md](GUIDE.md)) |
+
+<!-- BEGIN:turborepo-agent-rules -->
+
+# This is NOT the Turborepo you know
+
+Turborepo configuration, task behavior, and CLI commands can vary between installed versions and may differ from your training data. Resolve the `turbo` package from this file's directory or relevant workspace; in monorepos, it may not be visible from the repository root. For example, run `node -p "require.resolve('turbo/package.json')"` from a workspace that depends on `turbo`.
+
+Read `docs/README.md` inside that installed package first, then read the relevant pages from its `docs/` directory before changing Turborepo configuration or commands. Heed deprecation notices. These bundled docs match the installed package version and are available without network access.
+
+This block is written and re-added by `turbo` before repository-scoped commands when an AI agent is detected. In the Turborepo source repository, its template is defined in `crates/turborepo-cli/src/cli/agent_guidance.rs`. Removing the managed block while updates are enabled means a later qualifying invocation will add it again. Set `"agentGuidance": false` in the root `turbo.json` or `turbo.jsonc` to opt out; this does not remove an existing block. Keep the block committed with your work to avoid an uncommitted change on the next agent invocation.
+<!-- END:turborepo-agent-rules -->

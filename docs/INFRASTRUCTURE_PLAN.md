@@ -14,34 +14,34 @@ The goal of steps 0–5 is a **walking skeleton**: two people can sign up, appea
 ## Step 0: Decisions and accounts (🧑, about an hour)
 
 - [ ] 🧑 Both owners read [ADR 0001](decisions/0001-tech-stack.md) and either accept it or change it. Record the result in the Decisions section of [GUIDE.md](../GUIDE.md).
-- [ ] 🧑 Add the second owner as a collaborator: repo **Settings → Collaborators**.
-- [ ] 🧑 Upgrade Node.js on every dev PC to **24 LTS** (this PC has Node 18, which is end-of-life). Install from nodejs.org, or use `fnm`/`nvm-windows`.
-- [ ] 🧑 Enable pnpm: `corepack enable` (ships with Node).
+- [ ] 🧑 Add the second owner as a collaborator: repo **Settings → Collaborators**. *(Invite sent to ExyyP; waiting for them to accept.)*
+- [ ] 🧑 Upgrade Node.js on every dev PC to **24 LTS or newer**. Install from nodejs.org, `winget install OpenJS.NodeJS.LTS`, or `fnm`/`nvm-windows`. *(cadep55's PC: Node 26 installed.)*
+- [ ] 🧑 Install pnpm: `corepack enable` on Node 24, or `winget install pnpm.pnpm` on Node 25+ (no Corepack). *(cadep55's PC: done.)*
 - [ ] 🧑 Make sure Docker Desktop runs (needed for local Postgres).
 - [ ] 🧑 Decide whether the repo stays **public** (free CI minutes and security tools, but anyone can read the code) or goes private.
 
 ## Step 1: Repo foundations (🤖 PR, owner merges)
 
-- [ ] `.gitignore` (Node, Vite, env files, OS junk, Playwright reports), `.gitattributes` (LF line endings, LFS for art/audio), `.editorconfig`
-- [ ] `.nvmrc` / `engines` pinning Node 24, and `packageManager` pinning the pnpm version
-- [ ] `LICENSE` (owners choose: proprietary "All rights reserved", or an open-source licence)
-- [ ] `.github/pull_request_template.md`, issue templates (Feature, Bug, Task), `CODEOWNERS`
-- [ ] `.github/dependabot.yml` (npm + GitHub Actions, weekly, grouped)
-- [ ] Update `README.md`: what the game is, quick start, links to docs
+- [x] `.gitignore` (Node, Vite, env files, OS junk, Playwright reports), `.gitattributes` (LF line endings, LFS for art/audio), `.editorconfig`
+- [x] `.nvmrc` / `engines` pinning Node 24, and `packageManager` pinning the pnpm version
+- [ ] 🧑 `LICENSE` (owners choose: proprietary "All rights reserved", or an open-source licence). Until then the code is all rights reserved by default.
+- [x] `.github/pull_request_template.md`, issue templates (Feature, Bug, Task), `CODEOWNERS`
+- [x] `.github/dependabot.yml` (npm + GitHub Actions, weekly, grouped)
+- [x] Update `README.md`: what the game is, quick start, links to docs
 
 ## Step 2: Monorepo and tooling (🤖)
 
-- [ ] pnpm workspace (`pnpm-workspace.yaml`) and Turborepo (`turbo.json`) with `dev`, `build`, `typecheck`, `test`, `lint` pipelines
-- [ ] `packages/config`: base `tsconfig` (strict settings from [CONVENTIONS.md](CONVENTIONS.md)), Vitest preset
-- [ ] Biome config at the root, plus a `pnpm check` script (lint + typecheck + unit tests)
-- [ ] Pre-commit hook with **lefthook**: Biome format on staged files. Pre-push: `pnpm check`
-- [ ] Empty `apps/client`, `apps/server`, `packages/shared`, `packages/db` packages that build, typecheck and pass a placeholder test
+- [x] pnpm workspace (`pnpm-workspace.yaml`) and Turborepo (`turbo.json`) with `dev`, `build`, `typecheck`, `test`, `lint` pipelines
+- [x] `packages/config`: base, node and browser `tsconfig` presets (strict settings from [CONVENTIONS.md](CONVENTIONS.md)). Packages use Vitest's defaults; add a shared Vitest preset when two packages need the same config
+- [x] Biome config at the root, plus a `pnpm check` script (lint + typecheck + unit tests)
+- [x] Pre-commit hook with **lefthook**: Biome format on staged files. Pre-push: `pnpm check`
+- [x] Placeholder `apps/client`, `apps/server`, `packages/db` packages that typecheck, and `packages/shared` with the `RuleResult` helpers, `PROTOCOL_VERSION` and tests
 
 ## Step 3: CI (🤖 PR, then 🧑 settings)
 
-- [ ] 🤖 `.github/workflows/ci.yml`: install → `biome ci` → typecheck → unit tests with coverage → build, with pnpm and Turborepo caching
+- [x] 🤖 `.github/workflows/ci.yml`: install → `biome ci` → typecheck → unit tests with coverage → build, with pnpm and Turborepo caching
 - [ ] 🤖 Add a Postgres service container and integration-test job (once `packages/db` exists)
-- [ ] 🤖 `.github/workflows/codeql.yml`
+- [x] 🤖 `.github/workflows/codeql.yml`
 - [ ] 🧑 **Branch protection on `main`:** require PR, require CI status checks, require 1 approval, block force-push and deletion
 - [ ] 🧑 Turn on Dependabot alerts, secret scanning and push protection (**Settings → Code security**)
 - [ ] 🧑 Create the GitHub Projects board (Backlog / Ready / In progress / In review / Done) and labels (`area:*`, `type:*`, `good first task`)

@@ -1,0 +1,19 @@
+{
+  "name": "@nf/shared",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Game rules, data tables, types and network schemas (pure, no I/O)",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p .",
+    "test": "vitest run --coverage"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@nf/config": "workspace:*",
+    "@vitest/coverage-v8": "5.0.3"
+  }
+}
