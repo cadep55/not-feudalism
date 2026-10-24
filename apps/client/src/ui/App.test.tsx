@@ -19,7 +19,8 @@ describe("App", () => {
     const api = fakeApi({ me: vi.fn(async () => ({ ok: true as const, value: ALICE })) });
     render(<App api={api} />);
     expect(await screen.findByText("Alice")).toBeInTheDocument();
-    expect(screen.getByTestId("game-canvas")).toBeInTheDocument();
+    // The canvas appears only after the saved state loads, so wait for it.
+    expect(await screen.findByTestId("game-canvas")).toBeInTheDocument();
   });
 
   it("asks the player to refresh when the server speaks a newer protocol", async () => {
