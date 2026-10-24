@@ -12,6 +12,8 @@ export type CharacterState = {
   region: string;
   x: number;
   y: number;
+  /** When the character last moved, in milliseconds since the epoch. Used for speed checks. */
+  movedAt: number;
 };
 
 export type GameState = {

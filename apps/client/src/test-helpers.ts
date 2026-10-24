@@ -11,6 +11,7 @@ export const ALICE_STATE: GameState = {
     region: "heartland",
     x: 10,
     y: 10,
+    movedAt: 0,
   },
 };
 

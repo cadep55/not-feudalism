@@ -19,7 +19,22 @@ const characterColumns = {
   region: characters.region,
   x: characters.x,
   y: characters.y,
+  movedAt: characters.movedAt,
 };
+
+/** Database row (timestamps as Date) to game state (timestamps as epoch milliseconds). */
+function toCharacterState(row: {
+  id: string;
+  name: string;
+  rank: string;
+  gold: number;
+  region: string;
+  x: number;
+  y: number;
+  movedAt: Date;
+}): CharacterState {
+  return { ...row, movedAt: row.movedAt.getTime() };
+}
 
 export async function loadState(db: DbExecutor, characterId: string): Promise<GameState> {
   const [character] = await db
@@ -27,7 +42,7 @@ export async function loadState(db: DbExecutor, characterId: string): Promise<Ga
     .from(characters)
     .where(eq(characters.id, characterId));
   if (!character) throw new Error(`Character ${characterId} not found`);
-  return { character };
+  return { character: toCharacterState(character) };
 }
 
 async function storedResult(
@@ -56,6 +71,7 @@ export async function performAction(
   db: Db,
   characterId: string,
   request: ActionRequest,
+  now: Date,
 ): Promise<ActionResult> {
   const { requestId, ...action } = request;
   try {
@@ -70,7 +86,7 @@ export async function performAction(
         .for("update");
       if (!character) throw new Error(`Character ${characterId} not found`);
 
-      const result = applyAction({ character }, action);
+      const result = applyAction({ character: toCharacterState(character) }, action, now.getTime());
       if (result.ok) await saveCharacter(tx, result.value.character);
       await tx.insert(gameActions).values({
         characterId,
@@ -100,6 +116,7 @@ async function saveCharacter(db: DbExecutor, character: CharacterState): Promise
       region: character.region,
       x: character.x,
       y: character.y,
+      movedAt: new Date(character.movedAt),
     })
     .where(eq(characters.id, character.id));
 }

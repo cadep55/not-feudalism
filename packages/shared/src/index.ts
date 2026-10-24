@@ -1,3 +1,4 @@
+export { MOVE_SLACK_TILES, WALK_SPEED_TILES_PER_SECOND } from "./data/movement.ts";
 export {
   isRegionId,
   REGIONS,
@@ -21,4 +22,4 @@ export { FAILURE_REASONS, type FailureReason, isFailureReason } from "./protocol
 export { isCompatibleProtocol, PROTOCOL_VERSION } from "./protocol/version.ts";
 export { fail, ok, type RuleResult } from "./result.ts";
 export { type ActionFailure, applyAction } from "./rules/actions.ts";
-export { moveTo } from "./rules/move.ts";
+export { maxWalkTiles, moveTo, tileDistance } from "./rules/move.ts";

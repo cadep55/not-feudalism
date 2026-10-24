@@ -49,6 +49,7 @@ export function App({ api }: { api: Api }) {
     case "game":
       return (
         <GameScreen
+          api={api}
           player={state.player}
           onLogOut={async () => {
             await api.logOut();
