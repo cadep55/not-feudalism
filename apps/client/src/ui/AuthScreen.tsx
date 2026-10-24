@@ -20,17 +20,19 @@ export function AuthScreen({ api, onLoggedIn }: Props) {
     event.preventDefault();
     const form = Object.fromEntries(new FormData(event.currentTarget));
 
+    // The shared schemas carry player-facing messages that name the field.
+    const firstProblem = (issues: { message: string }[]) =>
+      issues[0]?.message ?? FAILURE_MESSAGES.invalid_input;
+
     let result: ApiResult<Player>;
     if (mode === "login") {
       const parsed = LoginRequest.safeParse(form);
-      if (!parsed.success) return setError(FAILURE_MESSAGES.invalid_input);
+      if (!parsed.success) return setError(firstProblem(parsed.error.issues));
       setBusy(true);
       result = await api.logIn(parsed.data);
     } else {
       const parsed = SignUpRequest.safeParse(form);
-      if (!parsed.success) {
-        return setError(parsed.error.issues[0]?.message ?? FAILURE_MESSAGES.invalid_input);
-      }
+      if (!parsed.success) return setError(firstProblem(parsed.error.issues));
       setBusy(true);
       result = await api.signUp(parsed.data);
     }

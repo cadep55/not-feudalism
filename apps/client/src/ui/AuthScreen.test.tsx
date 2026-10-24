@@ -47,7 +47,7 @@ describe("AuthScreen", () => {
 
     await fillLogin("not-an-email", "x");
 
-    expect(await screen.findByRole("alert")).toHaveTextContent("Please check the form");
+    expect(await screen.findByRole("alert")).toHaveTextContent("Enter a valid email address.");
     expect(api.logIn).not.toHaveBeenCalled();
   });
 
@@ -82,7 +82,26 @@ describe("AuthScreen", () => {
     await user.type(screen.getByLabelText("Character name"), "1Alice");
     await user.click(screen.getByRole("button", { name: "Create character" }));
 
-    expect(await screen.findByRole("alert")).toHaveTextContent("starting with a letter");
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Character name can only use letters, digits and underscores, and must start with a letter.",
+    );
+    expect(api.signUp).not.toHaveBeenCalled();
+  });
+
+  it("names the password, not the character name, when the password is too short", async () => {
+    const user = userEvent.setup();
+    const api = fakeApi();
+    render(<AuthScreen api={api} onLoggedIn={vi.fn()} />);
+
+    await user.click(screen.getByRole("tab", { name: "Sign up" }));
+    await user.type(screen.getByLabelText("Email"), "alice@example.test");
+    await user.type(screen.getByLabelText("Password"), "1234");
+    await user.type(screen.getByLabelText("Character name"), "Cadethegreatest");
+    await user.click(screen.getByRole("button", { name: "Create character" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Password must be at least 10 characters.",
+    );
     expect(api.signUp).not.toHaveBeenCalled();
   });
 });
