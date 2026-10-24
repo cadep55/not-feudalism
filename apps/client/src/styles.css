@@ -132,6 +132,69 @@ button:disabled {
   text-align: center;
 }
 
+.play {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: flex-start;
+  justify-content: center;
+}
+
+.inventory {
+  width: 200px;
+  box-sizing: border-box;
+  background: var(--parchment);
+  border: 4px solid var(--wood);
+  border-radius: 6px;
+  padding: 0.75rem 1rem;
+  box-shadow: 0 4px 12px #0005;
+}
+
+.inventory h2 {
+  margin: 0 0 0.5rem;
+  font-size: 1.1rem;
+  border-bottom: 2px solid var(--wood);
+  padding-bottom: 0.25rem;
+}
+
+.inventory ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.25rem;
+}
+
+.inventory li {
+  display: flex;
+  justify-content: space-between;
+}
+
+.inventory .count {
+  font-weight: bold;
+}
+
+.inventory .empty,
+.inventory .working {
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.inventory .working {
+  margin-top: 0.5rem;
+  font-style: italic;
+  color: var(--wood-dark);
+}
+
+.notice {
+  margin: 0;
+  justify-self: center;
+  background: var(--parchment);
+  color: var(--error);
+  padding: 0.4rem 1rem;
+  border-radius: 4px;
+}
+
 .canvas canvas {
   display: block;
   max-width: calc(100vw - 32px);

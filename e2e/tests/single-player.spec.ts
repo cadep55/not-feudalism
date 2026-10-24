@@ -32,23 +32,26 @@ async function expectInGame(page: Page, characterName: string) {
   await expect(page.locator("canvas")).toBeVisible();
 }
 
-test("a new player walks around, and the game remembers where they stopped", async ({ page }) => {
+/** Signs up a fresh player (unique per test) and waits for the game screen. */
+async function signUp(page: Page) {
   const id = randomUUID().slice(0, 8);
   const player = {
     email: `e2e-${id}@example.test`,
     password: "correct horse battery",
     name: `E2e${id}`,
   };
+  await page.goto("/");
+  await page.getByRole("tab", { name: "Sign up" }).click();
+  await page.getByLabel("Email").fill(player.email);
+  await page.getByLabel("Password").fill(player.password);
+  await page.getByLabel("Character name").fill(player.name);
+  await page.getByRole("button", { name: "Create character" }).click();
+  await expectInGame(page, player.name);
+  return player;
+}
 
-  await test.step("sign up", async () => {
-    await page.goto("/");
-    await page.getByRole("tab", { name: "Sign up" }).click();
-    await page.getByLabel("Email").fill(player.email);
-    await page.getByLabel("Password").fill(player.password);
-    await page.getByLabel("Character name").fill(player.name);
-    await page.getByRole("button", { name: "Create character" }).click();
-    await expectInGame(page, player.name);
-  });
+test("a new player walks around, and the game remembers where they stopped", async ({ page }) => {
+  const player = await test.step("sign up", () => signUp(page));
 
   const spawn = await serverPosition(page);
 
@@ -81,5 +84,36 @@ test("a new player walks around, and the game remembers where they stopped", asy
     await page.getByRole("button", { name: "Log in" }).click();
     await expectInGame(page, player.name);
     expect(await serverPosition(page)).toEqual(destination);
+  });
+});
+
+// Must match RESOURCE_NODES in packages/shared/src/data/resources.ts.
+const TREE = { x: 5, y: 5 };
+const FARM = { x: 13, y: 14 };
+
+test("a player gathers wood from the tree, and needs a rake for wheat", async ({ page }) => {
+  await test.step("sign up", () => signUp(page));
+  const inventory = page.getByRole("region", { name: "Inventory" });
+  await expect(inventory).toContainText("Empty");
+
+  await test.step("click the tree: walk over and gather for 3 seconds", async () => {
+    await clickTile(page, TREE);
+    await expect(inventory.getByRole("status")).toHaveText("Gathering wood…", { timeout: 10_000 });
+    await expect(inventory.getByRole("listitem")).toHaveText(["Wood1"], { timeout: 10_000 });
+    await expect(inventory.getByRole("status")).toHaveCount(0);
+  });
+
+  await test.step("reload: the wood is still there", async () => {
+    await page.reload();
+    await expect(page.getByRole("region", { name: "Inventory" }).getByRole("listitem")).toHaveText([
+      "Wood1",
+    ]);
+  });
+
+  await test.step("click the farm without a rake: told what's missing", async () => {
+    await clickTile(page, FARM);
+    await expect(page.getByRole("alert")).toHaveText("You need a rake to harvest wheat.", {
+      timeout: 15_000,
+    });
   });
 });
