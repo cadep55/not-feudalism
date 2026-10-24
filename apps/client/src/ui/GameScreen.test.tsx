@@ -1,4 +1,4 @@
-import type { CharacterState, GameState, Job, NodeId } from "@nf/shared";
+import type { CharacterState, Direction, GameState, Job, NodeId } from "@nf/shared";
 import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -15,6 +15,7 @@ const canvas = vi.hoisted(() => ({
     job: Job | null;
     sendPosition: (t: Tile) => Promise<MoveOutcome>;
     startGather: (nodeId: NodeId) => void | Promise<void>;
+    turn: (facing: Direction) => Promise<boolean>;
   },
 }));
 vi.mock("../game/GameCanvas.tsx", () => ({
@@ -57,7 +58,7 @@ describe("GameScreen", () => {
 
   it("sends positions as move.to actions", async () => {
     const { api, props } = await renderReady();
-    expect(await props.sendPosition({ x: 3, y: 4 })).toEqual({ ok: true });
+    expect(await props.sendPosition({ x: 3, y: 4 })).toEqual({ ok: true, facing: "s" });
     expect(api.sendAction).toHaveBeenCalledWith({ type: "move.to", payload: { x: 3, y: 4 } });
   });
 
@@ -69,6 +70,7 @@ describe("GameScreen", () => {
     expect(await props.sendPosition({ x: 20, y: 15 })).toEqual({
       ok: false,
       position: { x: ALICE_STATE.character.x, y: ALICE_STATE.character.y },
+      facing: ALICE_STATE.character.facing,
       message: "Slow down! You can't walk that fast.",
     });
   });
@@ -78,8 +80,55 @@ describe("GameScreen", () => {
       sendAction: vi.fn(async () => ({ ok: false as const, reason: "network_error" as const })),
     });
     const { props } = await renderReady(api);
-    expect(await props.sendPosition({ x: 3, y: 4 })).toEqual({ ok: true });
+    expect(await props.sendPosition({ x: 3, y: 4 })).toEqual({ ok: true, facing: null });
     expect(api.getState).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("GameScreen turning", () => {
+  it("sends a turn action and shows the new facing", async () => {
+    const turned: GameState = {
+      ...ALICE_STATE,
+      character: { ...ALICE_STATE.character, facing: "nw" },
+    };
+    const api = fakeApi({ sendAction: vi.fn(async () => ({ ok: true as const, value: turned })) });
+    const { props } = await renderReady(api);
+
+    let accepted: boolean | undefined;
+    await act(async () => {
+      accepted = await props.turn("nw");
+    });
+
+    expect(accepted).toBe(true);
+    expect(api.sendAction).toHaveBeenCalledWith({ type: "turn", payload: { facing: "nw" } });
+    expect(canvas.props?.character.facing).toBe("nw");
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("explains a refused turn and reports it to the game", async () => {
+    const api = fakeApi({
+      sendAction: vi.fn(async () => ({ ok: false as const, reason: "busy" as const })),
+    });
+    const { props } = await renderReady(api);
+
+    let accepted: boolean | undefined;
+    await act(async () => {
+      accepted = await props.turn("e");
+    });
+
+    expect(accepted).toBe(false);
+    expect(screen.getByRole("alert")).toHaveTextContent("You're busy with another job.");
+  });
+
+  it("explains a not_facing refusal when gathering", async () => {
+    const api = fakeApi({
+      sendAction: vi.fn(async () => ({ ok: false as const, reason: "not_facing" as const })),
+    });
+    const { props } = await renderReady(api);
+    await act(async () => {
+      await props.startGather("heartland_tree");
+    });
+    expect(screen.getByRole("alert")).toHaveTextContent("Face it to gather.");
   });
 });
 

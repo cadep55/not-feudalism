@@ -1,4 +1,4 @@
-import type { GameState, NodeId, RecipeId } from "@nf/shared";
+import type { Direction, GameState, NodeId, RecipeId } from "@nf/shared";
 import { useCallback, useEffect, useState } from "react";
 import type { MoveOutcome } from "../game/createGame.ts";
 import { GameCanvas } from "../game/GameCanvas.tsx";
@@ -68,14 +68,15 @@ export function GameScreen({ api, player, onLogOut }: Props) {
       // The reply carries the job too: walking away cancels a gather (a craft keeps going).
       if (result.ok) {
         showState(result.value);
-        return { ok: true };
+        return { ok: true, facing: result.value.character.facing };
       }
       // A network blip isn't a refusal: keep walking, the next update carries a newer position.
-      if (result.reason === "network_error") return { ok: true };
+      if (result.reason === "network_error") return { ok: true, facing: null };
       const truth = await api.getState();
       if (truth.ok) showState(truth.value);
       const position = truth.ok ? { x: truth.value.character.x, y: truth.value.character.y } : tile;
-      return { ok: false, position, message: FAILURE_MESSAGES[result.reason] };
+      const facing = truth.ok ? truth.value.character.facing : null;
+      return { ok: false, position, facing, message: FAILURE_MESSAGES[result.reason] };
     },
     [api, showState],
   );
@@ -89,6 +90,20 @@ export function GameScreen({ api, player, onLogOut }: Props) {
       } else {
         setNotice(FAILURE_MESSAGES[result.reason]);
       }
+    },
+    [api, showState],
+  );
+
+  // Turning in place, e.g. to face a node before gathering at it.
+  const turn = useCallback(
+    async (facing: Direction): Promise<boolean> => {
+      const result = await api.sendAction({ type: "turn", payload: { facing } });
+      if (result.ok) {
+        showState(result.value);
+        return true;
+      }
+      setNotice(FAILURE_MESSAGES[result.reason]);
+      return false;
     },
     [api, showState],
   );
@@ -131,6 +146,7 @@ export function GameScreen({ api, player, onLogOut }: Props) {
               job={load.state.job}
               sendPosition={sendPosition}
               startGather={startGather}
+              turn={turn}
             />
             <div className="side">
               <InventoryPanel inventory={load.state.inventory} job={load.state.job} />

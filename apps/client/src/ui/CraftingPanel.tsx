@@ -35,7 +35,7 @@ export function CraftingPanel({ inventory, job, onCraft }: Props) {
               <ul aria-label={`${name} needs`}>
                 {inputs.map(({ item, have, need, missing }) => (
                   <li key={item} className={missing ? "missing" : undefined}>
-                    <span>{ITEMS[item].name}</span>
+                    <span>{ITEMS[item].name}</span>{" "}
                     <span className="count">
                       {have}/{need}
                       {missing && <span className="visually-hidden"> (not enough)</span>}

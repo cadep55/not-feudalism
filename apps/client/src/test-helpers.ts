@@ -12,6 +12,7 @@ export const ALICE_STATE: GameState = {
     x: 10,
     y: 10,
     movedAt: 0,
+    facing: "s",
   },
   inventory: {},
   job: null,

@@ -12,6 +12,7 @@ export const FAILURE_MESSAGES: Record<FailureReason | "network_error", string> =
   out_of_bounds: "You can't go there.",
   moved_too_fast: "Slow down! You can't walk that fast.",
   too_far_away: "Get closer to gather.",
+  not_facing: "Face it to gather.",
   busy: "You're busy with another job.",
   missing_materials: "You don't have the materials for that.",
   missing_tool: "You need a rake to harvest wheat.",

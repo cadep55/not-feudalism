@@ -1,5 +1,6 @@
 import {
   type CharacterState,
+  type Direction,
   isRegionId,
   type Job,
   type NodeId,
@@ -8,6 +9,7 @@ import {
   type ResourceNode,
 } from "@nf/shared";
 import Phaser from "phaser";
+import { arrowPlacement, facingAfterStep, turnBeforeGather } from "./facing.ts";
 import {
   jobProgress,
   nearestAdjacentTile,
@@ -29,9 +31,16 @@ import {
 } from "./movement.ts";
 
 const TILE = 32;
+/** The facing arrow is a hint, not a feature: keep it faint. */
+const ARROW_ALPHA = 0.45;
 
-/** What the server said about a position update. On refusal, where the character really is. */
-export type MoveOutcome = { ok: true } | { ok: false; position: Tile; message: string };
+/**
+ * What the server said about a position update: the facing it recorded (null
+ * when unknown, e.g. a network blip), and on refusal where the character really is.
+ */
+export type MoveOutcome =
+  | { ok: true; facing: Direction | null }
+  | { ok: false; position: Tile; facing: Direction | null; message: string };
 
 export type WorldOptions = {
   character: CharacterState;
@@ -40,6 +49,8 @@ export type WorldOptions = {
   sendPosition: (tile: Tile) => Promise<MoveOutcome>;
   /** Asks the server to start gathering; the result comes back as a setJob call. */
   startGather: (nodeId: NodeId) => void;
+  /** Asks the server to turn the character in place; resolves true once it accepts. */
+  turn: (facing: Direction) => Promise<boolean>;
 };
 
 /** What the React side holds on to: tell the world about job changes, tear it down. */
@@ -53,13 +64,18 @@ type MovementKeys = Record<"up" | "down" | "left" | "right", Phaser.Input.Keyboa
 /**
  * The player's character on the region map. Walks one tile per step at the
  * server's speed (click a tile, or hold arrows/WASD) and reports positions to
- * the server, snapping back if it refuses. Clicking a resource node walks next
- * to it, then asks the server to start gathering.
+ * the server, snapping back if it refuses. The character faces the way it last
+ * stepped, shown by a faint arrow. Clicking a resource node walks next to it,
+ * turns toward it if needed, then asks the server to start gathering.
  */
 class WorldScene extends Phaser.Scene {
   private readonly options: WorldOptions;
   private readonly region: RegionSize;
   private position: Tile;
+  /** Which way the character faces on screen: the way it last stepped. */
+  private facing: Direction;
+  /** The facing the server last confirmed; null when unknown. Decides whether to turn before gathering. */
+  private serverFacing: Direction | null;
   private destination: Tile | null = null;
   private stepping = false;
   private lastSent: Tile;
@@ -67,8 +83,11 @@ class WorldScene extends Phaser.Scene {
   private inFlight = false;
   /** The node to gather at once the character stands next to it. */
   private gatherTarget: NodeId | null = null;
+  /** The node waiting on a turn before gathering; cleared if the player does anything else. */
+  private turningToward: NodeId | null = null;
   private job: Job | null;
   private avatar!: Phaser.GameObjects.Container;
+  private arrow!: Phaser.GameObjects.Graphics;
   private progressBar!: Phaser.GameObjects.Graphics;
   private toast!: Phaser.GameObjects.Text;
   private keys!: MovementKeys;
@@ -80,6 +99,8 @@ class WorldScene extends Phaser.Scene {
     if (!isRegionId(region)) throw new Error(`Unknown region "${region}"`);
     this.region = REGIONS[region];
     this.position = { x: options.character.x, y: options.character.y };
+    this.facing = options.character.facing;
+    this.serverFacing = options.character.facing;
     this.lastSent = this.position;
     this.job = options.job;
   }
@@ -104,6 +125,12 @@ class WorldScene extends Phaser.Scene {
       drawNode(nodes, RESOURCE_NODES[id]);
     }
 
+    // A faint chevron at the tile's edge marks the character's front.
+    this.arrow = this.add.graphics();
+    this.arrow.fillStyle(0xf5e9c8, ARROW_ALPHA);
+    this.arrow.fillTriangle(3, 0, -3, -4, -3, 4);
+    this.drawFacing();
+
     const body = this.add.circle(0, 0, TILE * 0.38, 0xc9a227).setStrokeStyle(3, 0x4a2e16);
     const label = this.add
       .text(0, -TILE * 0.75, this.options.character.name, {
@@ -116,6 +143,7 @@ class WorldScene extends Phaser.Scene {
       .setOrigin(0.5);
     this.progressBar = this.add.graphics().setVisible(false);
     this.avatar = this.add.container(...this.pixelsOf(this.position), [
+      this.arrow,
       body,
       label,
       this.progressBar,
@@ -136,6 +164,7 @@ class WorldScene extends Phaser.Scene {
       const tile = tileAt(pointer.worldX, pointer.worldY, TILE, this.region);
       if (!tile) return;
       const nodeId = nodeAt(tile, this.options.character.region);
+      this.turningToward = null;
       if (!nodeId) {
         this.gatherTarget = null;
         this.destination = tile;
@@ -170,6 +199,7 @@ class WorldScene extends Phaser.Scene {
     if (usingKeys) {
       this.destination = null;
       this.gatherTarget = null;
+      this.turningToward = null;
     }
 
     if (!this.stepping) {
@@ -211,10 +241,45 @@ class WorldScene extends Phaser.Scene {
     ) {
       const nodeId = this.gatherTarget;
       this.gatherTarget = null;
-      this.options.startGather(nodeId);
+      this.gatherAt(nodeId);
     }
 
     this.drawProgress();
+  }
+
+  /** Turn toward the node first when the server doesn't have us facing it, then gather. */
+  private gatherAt(nodeId: NodeId) {
+    const toward = turnBeforeGather(this.position, RESOURCE_NODES[nodeId], this.serverFacing);
+    if (toward === null) {
+      this.options.startGather(nodeId);
+      return;
+    }
+    const before = this.facing;
+    const at = this.position;
+    this.turningToward = nodeId;
+    this.setFacing(toward);
+    this.options.turn(toward).then((accepted) => {
+      // The player clicked elsewhere, walked off or got snapped back meanwhile.
+      const stillWaiting = this.turningToward === nodeId && samePlace(this.position, at);
+      if (this.turningToward === nodeId) this.turningToward = null;
+      if (!accepted) {
+        if (stillWaiting) this.setFacing(before);
+        return;
+      }
+      if (!stillWaiting) return;
+      this.serverFacing = toward;
+      this.options.startGather(nodeId);
+    });
+  }
+
+  private setFacing(facing: Direction) {
+    this.facing = facing;
+    this.drawFacing();
+  }
+
+  private drawFacing() {
+    const { x, y, angle } = arrowPlacement(this.facing, TILE / 2);
+    this.arrow.setPosition(x, y).setRotation(angle);
   }
 
   /** A bar over the character's head while a job runs, computed from its timestamps. */
@@ -239,6 +304,7 @@ class WorldScene extends Phaser.Scene {
     // Walking away cancels a gather on the server; hide the bar now rather than on its reply.
     // A craft keeps going, so its bar keeps filling.
     if (this.job && walkingCancels(this.job)) this.job = null;
+    this.setFacing(facingAfterStep(this.position, next, this.facing));
     const [x, y] = this.pixelsOf(next);
     this.tweens.add({
       targets: this.avatar,
@@ -259,16 +325,19 @@ class WorldScene extends Phaser.Scene {
     this.lastSentAt = time;
     this.options.sendPosition(sent).then((outcome) => {
       this.inFlight = false;
-      if (!outcome.ok) this.snapTo(outcome.position, outcome.message);
+      this.serverFacing = outcome.facing;
+      if (!outcome.ok) this.snapTo(outcome.position, outcome.facing, outcome.message);
     });
   }
 
   /** The server refused a move: put the character back where the server says it is. */
-  private snapTo(tile: Tile, message: string) {
+  private snapTo(tile: Tile, facing: Direction | null, message: string) {
     this.tweens.killTweensOf(this.avatar);
     this.stepping = false;
     this.destination = null;
     this.gatherTarget = null;
+    this.turningToward = null;
+    if (facing) this.setFacing(facing);
     this.position = tile;
     this.lastSent = tile;
     this.avatar.setPosition(...this.pixelsOf(tile));

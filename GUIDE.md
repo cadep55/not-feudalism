@@ -103,6 +103,10 @@ Record agreed decisions here with the date.
 - **2026-10-24:** Character names are 3–16 characters, letters, digits and underscores, starting with a letter.
 - **2026-10-24:** First resources: one **tree (wood)**, **rock (stone)** and **farm field (wheat)** on the heartland map. They never run out. Left-click to gather; each gather takes **3 seconds** and gives 1. Wheat needs a **rake**, the first tool, crafted from **2 wood + 1 stone**.
 - **2026-10-24:** Crafting takes **3 seconds** and works **anywhere** (no workbench yet). It keeps going while you walk; gathering is cancelled if you walk away. One job at a time.
+- **2026-10-24:** Characters face one of **8 directions** (the way they last stepped), shown by a faint arrow. **Gathering requires standing next to the node and facing it**; the same will apply to fighting.
+- **2026-10-24:** One **storehouse** and one **house**, pre-placed as 2x2 squares. Players and villagers carry at most **5 of each item**; the storehouse holds **100 of each**.
+- **2026-10-24:** Wheat fields hold **50 wheat + 5 wheat seeds** (every 10th harvest gives a seed) and disappear when empty. Plant a seed on the grass tile in front of you; it grows for **5 minutes**.
+- **2026-10-24:** The house holds **3 villagers** with random medieval names. Idle ones wander near the house (visual only). Assign them from a Villagers panel; they gather at **1/3 player speed**, carry 5, and deliver to the storehouse until it's full. **Each farming villager needs its own rake.**
 
 ## Ideas Parking Lot
 

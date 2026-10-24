@@ -1,4 +1,10 @@
-import { type CraftJob, type GatherJob, RESOURCE_NODES, type ResourceNode } from "@nf/shared";
+import {
+  type CraftJob,
+  type GatherJob,
+  RESOURCE_NODES,
+  type ResourceNode,
+  tileDistance,
+} from "@nf/shared";
 import { describe, expect, it } from "vitest";
 import {
   JOB_SETTLE_MS,
@@ -33,10 +39,22 @@ describe("nodesIn and nodeAt", () => {
 });
 
 describe("nearestAdjacentTile", () => {
-  it("stays put when already next to the node (or on it)", () => {
+  it("stays put when already next to the node", () => {
     expect(nearestAdjacentTile({ x: 6, y: 6 }, TREE, REGION)).toEqual({ x: 6, y: 6 });
     expect(nearestAdjacentTile({ x: 4, y: 5 }, TREE, REGION)).toEqual({ x: 4, y: 5 });
-    expect(nearestAdjacentTile({ x: 5, y: 5 }, TREE, REGION)).toEqual({ x: 5, y: 5 });
+  });
+
+  it("steps off the node when standing on it", () => {
+    expect(nearestAdjacentTile({ x: 5, y: 5 }, TREE, REGION)).toEqual({ x: 5, y: 4 });
+  });
+
+  it("always picks a tile at distance exactly 1 from the node", () => {
+    for (let y = 0; y < REGION.height; y++) {
+      for (let x = 0; x < REGION.width; x++) {
+        const tile = nearestAdjacentTile({ x, y }, TREE, REGION);
+        expect(tile && tileDistance(tile, TREE)).toBe(1);
+      }
+    }
   });
 
   it("picks the closest tile around the node", () => {
@@ -134,5 +152,10 @@ describe("readyToGather", () => {
   it("waits until next to the node", () => {
     const far = { x: 9, y: 9 };
     expect(readyToGather({ ...base, position: far, lastSent: far })).toBe(false);
+  });
+
+  it("never gathers while standing on the node", () => {
+    const on = { x: TREE.x, y: TREE.y };
+    expect(readyToGather({ ...base, position: on, lastSent: on })).toBe(false);
   });
 });

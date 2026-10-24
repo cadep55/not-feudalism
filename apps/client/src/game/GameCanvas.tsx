@@ -1,4 +1,4 @@
-import type { CharacterState, Job, NodeId } from "@nf/shared";
+import type { CharacterState, Direction, Job, NodeId } from "@nf/shared";
 import { useEffect, useRef } from "react";
 import type { MoveOutcome, World } from "./createGame.ts";
 import type { Tile } from "./movement.ts";
@@ -9,19 +9,23 @@ type Props = {
   job: Job | null;
   sendPosition: (tile: Tile) => Promise<MoveOutcome>;
   startGather: (nodeId: NodeId) => void;
+  /** Turns the character in place; resolves true once the server accepts. */
+  turn: (facing: Direction) => Promise<boolean>;
 };
 
 /**
  * Hosts the Phaser game. Phaser is loaded lazily so the login screen stays
  * small and tests of React screens never load a canvas engine.
  */
-export function GameCanvas({ character, job, sendPosition, startGather }: Props) {
+export function GameCanvas({ character, job, sendPosition, startGather, turn }: Props) {
   const parent = useRef<HTMLDivElement>(null);
   // The game is created once per character; it always calls the latest callbacks.
   const send = useRef(sendPosition);
   send.current = sendPosition;
   const gather = useRef(startGather);
   gather.current = startGather;
+  const turnTo = useRef(turn);
+  turnTo.current = turn;
   const latestJob = useRef(job);
   latestJob.current = job;
   const initial = useRef(character);
@@ -36,6 +40,7 @@ export function GameCanvas({ character, job, sendPosition, startGather }: Props)
         job: latestJob.current,
         sendPosition: (tile) => send.current(tile),
         startGather: (nodeId) => gather.current(nodeId),
+        turn: (facing) => turnTo.current(facing),
       });
     });
     return () => {
