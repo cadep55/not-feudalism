@@ -1,4 +1,4 @@
-import { createServer } from "node:http";
+import { createServer, type Server as HttpServer } from "node:http";
 import { Server } from "@colyseus/core";
 import { WebSocketTransport } from "@colyseus/ws-transport";
 import { createDb } from "@nf/db";
@@ -12,6 +12,21 @@ export type RunningServer = {
   /** Stops accepting connections, disposes rooms, then closes the database. */
   stop: () => Promise<void>;
 };
+
+/**
+ * Colyseus 0.18 only subscribes to the HTTP server's "error" event after a successful
+ * listen, so a failure such as EADDRINUSE never settles its promise and startup hangs.
+ * Racing it against the error event makes startup fail fast instead.
+ */
+function listen(gameServer: Server, httpServer: HttpServer, port: number): Promise<void> {
+  return new Promise((resolve, reject) => {
+    httpServer.once("error", reject);
+    gameServer.listen(port).then(() => {
+      httpServer.off("error", reject);
+      resolve();
+    }, reject);
+  });
+}
 
 /** Express (HTTP) and Colyseus (WebSocket rooms) on one port, in one process. */
 export async function startServer(env: ServerEnv, logger: Logger): Promise<RunningServer> {
@@ -33,7 +48,12 @@ export async function startServer(env: ServerEnv, logger: Logger): Promise<Runni
   });
   // Rooms are registered here (gameServer.define) from issue #10 on.
 
-  await gameServer.listen(env.PORT);
+  try {
+    await listen(gameServer, httpServer, env.PORT);
+  } catch (err) {
+    await close();
+    throw err;
+  }
   const address = httpServer.address();
   const port = typeof address === "object" && address ? address.port : env.PORT;
 

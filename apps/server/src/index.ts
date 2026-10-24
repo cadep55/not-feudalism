@@ -7,7 +7,10 @@ const SHUTDOWN_TIMEOUT_MS = 10_000;
 
 const env = readServerEnv();
 const logger = createLogger(env);
-const server = await startServer(env, logger);
+const server = await startServer(env, logger).catch((err: unknown) => {
+  logger.fatal({ err }, "server failed to start");
+  process.exit(1);
+});
 logger.info(
   { port: server.port, protocol: PROTOCOL_VERSION, env: env.NODE_ENV },
   "server listening",
