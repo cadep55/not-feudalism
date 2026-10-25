@@ -1,5 +1,15 @@
-import type { Direction, GameState, ItemId, NodeId, RecipeId, VillagerJob } from "@nf/shared";
-import { useCallback, useEffect, useState } from "react";
+import {
+  atStorehouse,
+  type Direction,
+  type GameState,
+  type ItemId,
+  isRegionId,
+  type NodeId,
+  REGIONS,
+  type RecipeId,
+  type VillagerJob,
+} from "@nf/shared";
+import { type CSSProperties, useCallback, useEffect, useState } from "react";
 import type { MoveOutcome } from "../game/createGame.ts";
 import { GameCanvas } from "../game/GameCanvas.tsx";
 import { refreshDelay } from "../game/gathering.ts";
@@ -13,13 +23,12 @@ import { FAILURE_MESSAGES } from "./messages.ts";
 import { PanelBar } from "./PanelBar.tsx";
 import {
   browserStorage,
-  ensureOpen,
   loadOpenPanels,
   type PanelId,
   saveOpenPanels,
   togglePanel,
 } from "./panels.ts";
-import { StorehousePanel } from "./StorehousePanel.tsx";
+import { StorehouseOverlay } from "./StorehouseOverlay.tsx";
 import { VillagersMenu } from "./VillagersMenu.tsx";
 
 /** How long a refusal message stays on screen. */
@@ -36,7 +45,7 @@ type Load = { status: "loading" } | { status: "error" } | { status: "ready"; sta
 export function GameScreen({ api, player, onLogOut }: Props) {
   const [load, setLoad] = useState<Load>({ status: "loading" });
   const [notice, setNotice] = useState<string | null>(null);
-  const [storehouseHighlighted, setStorehouseHighlighted] = useState(false);
+  const [storehouseOpen, setStorehouseOpen] = useState(false);
   const [openPanels, setOpenPanels] = useState<PanelId[]>(() => loadOpenPanels(browserStorage()));
   useEffect(() => saveOpenPanels(browserStorage(), openPanels), [openPanels]);
   const toggle = useCallback((id: PanelId) => setOpenPanels((open) => togglePanel(open, id)), []);
@@ -99,11 +108,12 @@ export function GameScreen({ api, player, onLogOut }: Props) {
     return () => clearTimeout(timer);
   }, [notice]);
 
+  // The storehouse overlay closes by itself once the player walks away or turns from it.
+  const atTheStorehouse = load.status === "ready" && atStorehouse(load.state);
   useEffect(() => {
-    if (!storehouseHighlighted) return;
-    const timer = setTimeout(() => setStorehouseHighlighted(false), NOTICE_MS);
-    return () => clearTimeout(timer);
-  }, [storehouseHighlighted]);
+    if (storehouseOpen && !atTheStorehouse) setStorehouseOpen(false);
+  }, [storehouseOpen, atTheStorehouse]);
+  const closeStorehouse = useCallback(() => setStorehouseOpen(false), []);
 
   const sendPosition = useCallback(
     async (tile: Tile): Promise<MoveOutcome> => {
@@ -227,11 +237,8 @@ export function GameScreen({ api, player, onLogOut }: Props) {
     },
     [api, showState],
   );
-  // Walking up to the storehouse opens its panel (if closed) and highlights it.
-  const openStorehouse = useCallback(() => {
-    setOpenPanels((open) => ensureOpen(open, "storehouse"));
-    setStorehouseHighlighted(true);
-  }, []);
+  // Walking up to the storehouse (and facing it) opens it over the map.
+  const openStorehouse = useCallback(() => setStorehouseOpen(true), []);
 
   return (
     <div className="game">
@@ -252,7 +259,7 @@ export function GameScreen({ api, player, onLogOut }: Props) {
       {load.status === "ready" && (
         <>
           <div className="map-area">
-            <div className="map">
+            <div className="map" style={mapShape(load.state.character.region)}>
               <GameCanvas
                 character={load.state.character}
                 job={load.state.job}
@@ -265,6 +272,14 @@ export function GameScreen({ api, player, onLogOut }: Props) {
                 openStorehouse={openStorehouse}
               />
               <VillagersMenu villagers={load.state.villagers} onAssign={assignVillager} />
+              {storehouseOpen && (
+                <StorehouseOverlay
+                  state={load.state}
+                  onStore={store}
+                  onTake={take}
+                  onClose={closeStorehouse}
+                />
+              )}
             </div>
           </div>
           {notice && (
@@ -295,18 +310,17 @@ export function GameScreen({ api, player, onLogOut }: Props) {
                   onPlant={plant}
                 />
               ),
-              storehouse: (
-                <StorehousePanel
-                  state={load.state}
-                  highlighted={storehouseHighlighted}
-                  onStore={store}
-                  onTake={take}
-                />
-              ),
             }}
           />
         </>
       )}
     </div>
   );
+}
+
+/** The map's width-to-height ratio, so the page can size it as large as fits. */
+function mapShape(region: string): CSSProperties {
+  if (!isRegionId(region)) return {};
+  const { width, height } = REGIONS[region];
+  return { "--map-ratio": width / height } as CSSProperties;
 }

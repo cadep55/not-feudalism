@@ -1,12 +1,11 @@
-/** The panels in the bottom bar, left to right. */
-export const PANEL_IDS = ["inventory", "crafting", "farming", "storehouse"] as const;
+/** The panels in the bottom bar, left to right. (The storehouse opens over the map instead.) */
+export const PANEL_IDS = ["inventory", "crafting", "farming"] as const;
 export type PanelId = (typeof PANEL_IDS)[number];
 
 export const PANEL_LABELS: Record<PanelId, string> = {
   inventory: "Inventory",
   crafting: "Crafting",
   farming: "Farming",
-  storehouse: "Storehouse",
 };
 
 const STORAGE_KEY = "nf.openPanels";
@@ -15,11 +14,6 @@ const STORAGE_KEY = "nf.openPanels";
 export function togglePanel(open: readonly PanelId[], id: PanelId): PanelId[] {
   const next = open.includes(id) ? open.filter((p) => p !== id) : [...open, id];
   return PANEL_IDS.filter((p) => next.includes(p));
-}
-
-/** Makes sure a panel is open (e.g. the storehouse when the player walks up to it). */
-export function ensureOpen(open: readonly PanelId[], id: PanelId): PanelId[] {
-  return open.includes(id) ? [...open] : togglePanel(open, id);
 }
 
 /**
