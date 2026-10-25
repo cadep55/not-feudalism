@@ -6,13 +6,13 @@ How villagers behave, and how the server works out what they did without running
 
 | Topic | Rule |
 |---|---|
-| How many | The house holds **3 villagers** (2–4 per house later) |
+| How many | Each house holds **3 villagers** (2–4 per house later) |
 | Names | Each gets a **random medieval name** from a list in `packages/shared/src/data/villagers.ts`, shown above them and in the Villagers panel. Renaming comes later |
 | Idle | Idle villagers **wander within 3 tiles of the house**, pausing a few seconds between strolls. **Visual only:** the server doesn't track idle positions |
 | Assigning | A **Villagers panel** lists each villager with its status and a dropdown: Idle, Gather wood, Gather stone, Harvest wheat |
 | Speed | Villagers gather at **1/3 of the player's speed**: 9 seconds per unit |
 | Carrying | A villager carries **up to 5** (the carry limit), then walks to the storehouse and drops them off |
-| Storehouse full | When a delivery doesn't fit (100 of that item), the villager **stops** and goes idle |
+| Storehouse full | When a delivery doesn't fit (100 of that item), the rest goes to the **next nearest storehouse**; when none has room, the villager **stops** and goes idle (2026-10-25, [buildings.md](buildings.md)) |
 | Wheat | **Each farming villager needs its own rake**, taken from the storehouse when assigned and put back when unassigned |
 
 ## How the work is computed (no ticking)
@@ -21,9 +21,10 @@ Golden rule 5 says time-based things use timestamps, not loops. A villager's wor
 
 **The places involved** (all tiles):
 
-- **Door:** the tile just below the house (where villagers set out from)
-- **Work spot:** the free tile next to the target (tree, rock or field) that's closest to the storehouse
-- **Drop-off:** the free tile next to the storehouse that's closest to the work spot
+- **Door:** the tile just below the villager's house (where it sets out from)
+- **Storehouse:** the one nearest the target when the villager was assigned (saved in its task)
+- **Work spot:** the free tile next to the target (tree, rock or field) that's closest to its storehouse
+- **Drop-off:** the free tile next to its storehouse that's closest to the work spot
 
 **The timeline**, from `since` (when it was assigned):
 
@@ -43,7 +44,7 @@ and the number of deliveries by time `t` is the largest `k` whose time is ≤ `t
 **Settling:** whenever the server reads a character's state or applies an action, it first **settles** every working villager: deliveries made since the last settle go into the storehouse, in order, each one checked against the 100 cap. The villager remembers how many deliveries it has already handed in, so nothing is counted twice.
 
 - **Wheat:** each delivered unit is a harvest from the villager's field, using the same harvest rules as the player (one wheat, a seed every 10th harvest). If the field runs out, the villager hands in what it got and goes idle (its rake goes back to the storehouse).
-- **Full storehouse:** the villager hands in what fits, drops the rest, and goes idle.
+- **Full storehouse:** what doesn't fit goes to the next nearest storehouse, and so on; if some still doesn't fit anywhere, the villager drops it and goes idle.
 - **Unassigning:** settles first, then the villager goes idle; anything it was partway through gathering is lost.
 
 **Drawing:** the client runs the same timeline function to place working villagers (walking, gathering, dropping off), so they move smoothly with no server messages. Idle villagers wander on the client only.

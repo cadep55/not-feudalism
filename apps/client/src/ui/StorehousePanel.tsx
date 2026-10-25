@@ -1,11 +1,12 @@
 import {
-  atStorehouse,
   CARRY_LIMIT,
   type GameState,
   ITEM_IDS,
   ITEMS,
   type ItemId,
   STOREHOUSE_LIMIT,
+  storageOf,
+  storehouseInFront,
 } from "@nf/shared";
 
 type Props = {
@@ -17,21 +18,24 @@ type Props = {
 };
 
 /**
- * What the storehouse holds, with buttons to move items between it and the
- * character's hands. Store puts away everything carried of an item (as much as
- * fits); Take picks up as many as the character can carry. Both only work while
- * standing beside the storehouse and facing it.
+ * What the storehouse the character faces holds (each storehouse keeps its own
+ * stock), with buttons to move items between it and the character's hands.
+ * Store puts away everything carried of an item (as much as fits); Take picks
+ * up as many as the character can carry. Both only work while standing beside
+ * a storehouse and facing it.
  */
 export function StorehousePanel({ state, highlighted = false, onStore, onTake }: Props) {
-  const usable = atStorehouse(state);
+  const storehouse = storehouseInFront(state);
+  const usable = storehouse !== null;
+  const storage = storehouse ? storageOf(state, storehouse.id) : {};
   const stored = ITEM_IDS.flatMap((id) => {
-    const count = state.storage[id] ?? 0;
+    const count = storage[id] ?? 0;
     const room = CARRY_LIMIT - (state.inventory[id] ?? 0);
     return count > 0 ? [{ id, name: ITEMS[id].name, count, take: Math.min(count, room) }] : [];
   });
   const carried = ITEM_IDS.flatMap((id) => {
     const count = state.inventory[id] ?? 0;
-    const room = STOREHOUSE_LIMIT - (state.storage[id] ?? 0);
+    const room = STOREHOUSE_LIMIT - (storage[id] ?? 0);
     return count > 0 ? [{ id, name: ITEMS[id].name, count, store: Math.min(count, room) }] : [];
   });
 

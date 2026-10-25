@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import type { AddressInfo } from "node:net";
 import { createDb, inventories, readDbEnv, runMigrations, storehouseItems } from "@nf/db";
-import { BUILDINGS, type GameState, RESOURCE_NODES } from "@nf/shared";
+import { type GameState, RESOURCE_NODES, STARTING_STOREHOUSE } from "@nf/shared";
 import { eq } from "drizzle-orm";
 import express from "express";
 import { pino } from "pino";
@@ -13,7 +13,7 @@ const { DATABASE_URL } = readDbEnv();
 const { db, close } = createDb(DATABASE_URL);
 const servers: { close: () => void }[] = [];
 
-const store = BUILDINGS.heartland_storehouse;
+const store = STARTING_STOREHOUSE;
 const tree = RESOURCE_NODES.heartland_tree;
 
 // The game's clock, an hour ahead of real time so new characters may walk anywhere.
@@ -96,7 +96,7 @@ afterAll(async () => {
 describe("the storehouse", () => {
   it("starts empty", async () => {
     const { cookie } = await newPlayer();
-    expect((await state(cookie)).storage).toEqual({});
+    expect((await state(cookie)).storage[store.id]).toEqual({});
   });
 
   it("stores and takes items, and keeps them across reloads", async () => {
@@ -105,17 +105,17 @@ describe("the storehouse", () => {
     expect(stored.status).toBe(200);
     const afterStore = await state(cookie);
     expect(afterStore.inventory).toEqual({});
-    expect(afterStore.storage).toEqual({ wood: 4 });
+    expect(afterStore.storage[store.id]).toEqual({ wood: 4 });
     const [row] = await db
       .select()
       .from(storehouseItems)
       .where(eq(storehouseItems.characterId, characterId));
-    expect(row).toMatchObject({ itemId: "wood", quantity: 4 });
+    expect(row).toMatchObject({ buildingId: store.id, itemId: "wood", quantity: 4 });
 
     expect((await act(cookie, "storehouse.take", { item: "wood", quantity: 1 })).status).toBe(200);
     const afterTake = await state(cookie);
     expect(afterTake.inventory).toEqual({ wood: 1 });
-    expect(afterTake.storage).toEqual({ wood: 3 });
+    expect(afterTake.storage[store.id]).toEqual({ wood: 3 });
   });
 
   it("only works next to the storehouse and facing it", async () => {
@@ -143,7 +143,7 @@ describe("the storehouse", () => {
     const res = await act(cookie, "storehouse.store", { item: "wood", quantity: 2 });
     expect(await res.json()).toEqual({ error: "storehouse_full" });
     expect((await act(cookie, "storehouse.store", { item: "wood", quantity: 1 })).status).toBe(200);
-    expect((await state(cookie)).storage).toEqual({ wood: 100 });
+    expect((await state(cookie)).storage[store.id]).toEqual({ wood: 100 });
   });
 });
 

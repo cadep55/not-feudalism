@@ -108,6 +108,7 @@ Record agreed decisions here with the date.
 - **2026-10-24:** One **storehouse** and one **house**, pre-placed as 2x2 squares. Players and villagers carry at most **5 of each item**; the storehouse holds **100 of each**.
 - **2026-10-24:** Wheat fields hold **50 wheat + 5 wheat seeds** (every 10th harvest gives a seed) and disappear when empty. Plant a seed on the grass tile in front of you; it grows for **5 minutes**.
 - **2026-10-24:** The house holds **3 villagers** with random medieval names. Idle ones wander near the house (visual only). Assign them from a Villagers panel; they gather at **1/3 player speed**, carry 5, and deliver to the storehouse until it's full. **Each farming villager needs its own rake.**
+- **2026-10-25:** Players **build houses (5 wood) and storehouses (5 wood + 5 stone)** from their inventory in **10 seconds**, up to **5 houses and 3 storehouses**, with a clear tile on every side. Removing takes **5 seconds** and refunds the cost (to the inventory, then the nearest storehouse); a storehouse must be empty, and the last house and storehouse stay. Each new house brings 3 villagers. **Each storehouse keeps its own stock**; villagers deliver to the nearest, then the next nearest. ([docs/design/buildings.md](docs/design/buildings.md), #40)
 
 ## Ideas Parking Lot
 

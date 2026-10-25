@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { BUILDINGS, covers } from "./buildings.ts";
+import { covers, STARTING_BUILDINGS } from "./buildings.ts";
 import {
   FIELD_GROW_MS,
   FIELD_SEEDS,
@@ -29,7 +29,7 @@ describe("farming data", () => {
       expect(Object.values(RESOURCE_NODES).some((n) => n.x === field.x && n.y === field.y)).toBe(
         false,
       );
-      expect(Object.values(BUILDINGS).some((b) => covers(b, field))).toBe(false);
+      expect(STARTING_BUILDINGS.some((b) => covers(b, field))).toBe(false);
       expect(field).not.toMatchObject(SPAWN_POINT);
     }
   });

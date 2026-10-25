@@ -1,11 +1,15 @@
 export {
-  BUILDING_IDS,
-  BUILDINGS,
+  BUILDING_KINDS,
+  BUILDING_SIZES,
   type Building,
-  type BuildingId,
+  type BuildingKind,
   CARRY_LIMIT,
   covers,
   footprint,
+  isBuildingKind,
+  STARTING_BUILDINGS,
+  STARTING_HOUSE,
+  STARTING_STOREHOUSE,
   STOREHOUSE_LIMIT,
 } from "./data/buildings.ts";
 export {
@@ -88,6 +92,16 @@ export { FAILURE_REASONS, type FailureReason, isFailureReason } from "./protocol
 export { isCompatibleProtocol, PROTOCOL_VERSION } from "./protocol/version.ts";
 export { fail, ok, type RuleResult } from "./result.ts";
 export { type ActionFailure, applyAction, settleWorld } from "./rules/actions.ts";
+export {
+  buildingAt,
+  buildingById,
+  buildingsOf,
+  distanceToBuilding,
+  houseDoor,
+  isBlocked,
+  storehouseInFront,
+  storehousesByDistance,
+} from "./rules/buildings.ts";
 export { startCraft } from "./rules/craft.ts";
 export {
   completeHarvest,
@@ -107,6 +121,7 @@ export {
   atStorehouse,
   canCarry,
   type StorehouseFailure,
+  storageOf,
   storeItems,
   takeItems,
 } from "./rules/storehouse.ts";
@@ -114,11 +129,13 @@ export {
   assignVillager,
   deliveriesBy,
   dropOffSpot,
-  houseDoor,
   pickVillagerNames,
+  type Route,
+  returnRake,
   settleVillagers,
   taskTarget,
   taskTimeline,
   villagerActivity,
+  villagerRoute,
   workSpot,
 } from "./rules/villagers.ts";

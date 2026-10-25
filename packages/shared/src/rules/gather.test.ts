@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { STARTING_BUILDINGS } from "../data/buildings.ts";
 import { GATHER_DURATION_MS, GATHER_YIELD, RESOURCE_NODES } from "../data/resources.ts";
 import { directionBetween } from "../game/direction.ts";
 import type { GameState } from "../game/state.ts";
@@ -31,6 +32,7 @@ function stateAt(
     },
     inventory: {},
     storage: {},
+    buildings: [...STARTING_BUILDINGS],
     fields: [],
     villagers: [],
     job: null,

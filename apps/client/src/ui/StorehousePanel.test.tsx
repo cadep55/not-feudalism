@@ -1,4 +1,4 @@
-import type { GameState } from "@nf/shared";
+import { type GameState, STARTING_STOREHOUSE } from "@nf/shared";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
@@ -23,7 +23,7 @@ function renderPanel(state: GameState) {
 
 describe("StorehousePanel", () => {
   it("shows the storehouse contents out of its limit", () => {
-    renderPanel(atStorehouse({ storage: { wood: 12, stone: 3 } }));
+    renderPanel(atStorehouse({ storage: { heartland_storehouse: { wood: 12, stone: 3 } } }));
     const rows = within(screen.getByRole("list", { name: "In the storehouse" })).getAllByRole(
       "listitem",
     );
@@ -35,11 +35,29 @@ describe("StorehousePanel", () => {
     expect(screen.getByText("Nothing stored yet.")).toBeInTheDocument();
   });
 
-  it("disables every button away from the storehouse, and says how to use it", () => {
-    renderPanel({ ...ALICE_STATE, inventory: { wood: 2 }, storage: { stone: 4 } });
+  it("away from every storehouse, shows no stock, disables Store, and says how to use it", () => {
+    renderPanel({
+      ...ALICE_STATE,
+      inventory: { wood: 2 },
+      storage: { heartland_storehouse: { stone: 4 } },
+    });
     expect(screen.getByRole("button", { name: "Store Wood" })).toBeDisabled();
-    expect(screen.getByRole("button", { name: "Take Stone" })).toBeDisabled();
+    expect(screen.queryByRole("button", { name: "Take Stone" })).toBeNull();
     expect(screen.getByText("Walk to the storehouse and face it to use it.")).toBeInTheDocument();
+  });
+
+  it("shows the stock of the storehouse the character faces; each keeps its own", () => {
+    const north = { ...STARTING_STOREHOUSE, id: "north_storehouse", x: 2, y: 1 };
+    renderPanel({
+      ...ALICE_STATE,
+      character: { ...ALICE_STATE.character, x: 4, y: 1, facing: "w" },
+      buildings: [...ALICE_STATE.buildings, north],
+      storage: { heartland_storehouse: { stone: 4 }, [north.id]: { wood: 7 } },
+    });
+    const rows = within(screen.getByRole("list", { name: "In the storehouse" })).getAllByRole(
+      "listitem",
+    );
+    expect(rows.map((row) => row.textContent)).toEqual(["Wood 7/100Take"]);
   });
 
   it("disables the buttons beside the storehouse when not facing it", () => {
@@ -49,7 +67,9 @@ describe("StorehousePanel", () => {
   });
 
   it("enables the buttons beside the storehouse and facing it", () => {
-    renderPanel(atStorehouse({ inventory: { wood: 2 }, storage: { stone: 4 } }));
+    renderPanel(
+      atStorehouse({ inventory: { wood: 2 }, storage: { heartland_storehouse: { stone: 4 } } }),
+    );
     expect(screen.getByRole("button", { name: "Store Wood" })).toBeEnabled();
     expect(screen.getByRole("button", { name: "Take Stone" })).toBeEnabled();
     expect(screen.queryByText(/Walk to the storehouse/)).not.toBeInTheDocument();
@@ -63,31 +83,39 @@ describe("StorehousePanel", () => {
 
   it("stores only what still fits in the storehouse", async () => {
     const { onStore } = renderPanel(
-      atStorehouse({ inventory: { wood: 4 }, storage: { wood: 98 } }),
+      atStorehouse({ inventory: { wood: 4 }, storage: { heartland_storehouse: { wood: 98 } } }),
     );
     await userEvent.click(screen.getByRole("button", { name: "Store Wood" }));
     expect(onStore).toHaveBeenCalledWith("wood", 2);
   });
 
   it("disables Store when the storehouse is full of that item", () => {
-    renderPanel(atStorehouse({ inventory: { wood: 1 }, storage: { wood: 100 } }));
+    renderPanel(
+      atStorehouse({ inventory: { wood: 1 }, storage: { heartland_storehouse: { wood: 100 } } }),
+    );
     expect(screen.getByRole("button", { name: "Store Wood" })).toBeDisabled();
   });
 
   it("takes as many as the character can carry", async () => {
-    const { onTake } = renderPanel(atStorehouse({ inventory: { wood: 2 }, storage: { wood: 12 } }));
+    const { onTake } = renderPanel(
+      atStorehouse({ inventory: { wood: 2 }, storage: { heartland_storehouse: { wood: 12 } } }),
+    );
     await userEvent.click(screen.getByRole("button", { name: "Take Wood" }));
     expect(onTake).toHaveBeenCalledWith("wood", 3);
   });
 
   it("takes everything stored when it all fits", async () => {
-    const { onTake } = renderPanel(atStorehouse({ storage: { stone: 2 } }));
+    const { onTake } = renderPanel(
+      atStorehouse({ storage: { heartland_storehouse: { stone: 2 } } }),
+    );
     await userEvent.click(screen.getByRole("button", { name: "Take Stone" }));
     expect(onTake).toHaveBeenCalledWith("stone", 2);
   });
 
   it("disables Take when the character's hands are full of that item", () => {
-    renderPanel(atStorehouse({ inventory: { wood: 5 }, storage: { wood: 10 } }));
+    renderPanel(
+      atStorehouse({ inventory: { wood: 5 }, storage: { heartland_storehouse: { wood: 10 } } }),
+    );
     expect(screen.getByRole("button", { name: "Take Wood" })).toBeDisabled();
   });
 });

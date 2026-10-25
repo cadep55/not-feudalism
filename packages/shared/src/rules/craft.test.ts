@@ -1,6 +1,6 @@
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
-import { CARRY_LIMIT } from "../data/buildings.ts";
+import { CARRY_LIMIT, STARTING_BUILDINGS } from "../data/buildings.ts";
 import { ITEM_IDS, type ItemId } from "../data/items.ts";
 import { RECIPE_IDS, RECIPES } from "../data/recipes.ts";
 import type { GameState, Inventory } from "../game/state.ts";
@@ -25,6 +25,7 @@ function stateWith(inventory: Inventory, overrides: Partial<GameState> = {}): Ga
     },
     inventory,
     storage: {},
+    buildings: [...STARTING_BUILDINGS],
     fields: [],
     villagers: [],
     job: null,

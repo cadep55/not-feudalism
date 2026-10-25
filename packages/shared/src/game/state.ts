@@ -1,3 +1,4 @@
+import type { Building } from "../data/buildings.ts";
 import type { ItemId } from "../data/items.ts";
 import type { RecipeId } from "../data/recipes.ts";
 import type { NodeId } from "../data/resources.ts";
@@ -72,13 +73,21 @@ export type Field = {
  * What a working villager is doing, and since when. Its whole work timeline
  * follows from this (docs/design/villagers.md); nothing ticks.
  */
-export type VillagerTask =
-  | { kind: "gather"; nodeId: NodeId; since: number; delivered: number }
-  | { kind: "harvest"; fieldId: string; since: number; delivered: number };
+export type VillagerTask = (
+  | { kind: "gather"; nodeId: NodeId }
+  | { kind: "harvest"; fieldId: string }
+) & {
+  /** The storehouse it walks to with each load (the nearest to its work when assigned). */
+  storehouseId: string;
+  since: number;
+  delivered: number;
+};
 
 export type Villager = {
   id: string;
   name: string;
+  /** The house it lives in and sets out from. */
+  houseId: string;
   /** null while idle (wandering near the house). */
   task: VillagerTask | null;
 };
@@ -87,11 +96,16 @@ export type GameState = {
   character: CharacterState;
   /** What the character carries (at most CARRY_LIMIT of each). */
   inventory: Inventory;
-  /** What the character's storehouse holds (at most STOREHOUSE_LIMIT of each). */
-  storage: Inventory;
+  /** The character's buildings: houses and storehouses. */
+  buildings: Building[];
+  /**
+   * What each storehouse holds, by building id (at most STOREHOUSE_LIMIT of
+   * each item per storehouse). Every storehouse has an entry, empty or not.
+   */
+  storage: Record<string, Inventory>;
   /** Wheat fields in the character's world. */
   fields: Field[];
-  /** The villagers living in the character's house. */
+  /** The villagers living in the character's houses. */
   villagers: Villager[];
   /** The character's job in progress, or null when idle. */
   job: Job | null;

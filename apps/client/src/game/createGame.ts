@@ -1,10 +1,9 @@
 import {
-  BUILDINGS,
   type Building,
-  type BuildingId,
   type CharacterState,
   type Direction,
   type Field,
+  houseDoor,
   isRegionId,
   type Job,
   type NodeId,
@@ -14,6 +13,7 @@ import {
   type Villager,
   type VillagerTask,
   villagerActivity,
+  villagerRoute,
 } from "@nf/shared";
 import Phaser from "phaser";
 import {
@@ -45,6 +45,7 @@ import {
   tileAt,
 } from "./movement.ts";
 import {
+  type Home,
   type Point,
   pickWanderTile,
   planStroll,
@@ -73,8 +74,10 @@ export type WorldOptions = {
   job: Job | null;
   /** The wheat fields when the game starts; later changes arrive through World.setFields. */
   fields: Field[];
-  /** The house's villagers when the game starts; later changes arrive through World.setVillagers. */
+  /** The villagers when the game starts; later changes arrive through World.setVillagers. */
   villagers: Villager[];
+  /** The buildings when the game starts; later changes arrive through World.setBuildings. */
+  buildings: Building[];
   sendPosition: (tile: Tile) => Promise<MoveOutcome>;
   /** Asks the server to start gathering; the result comes back as a setJob call. */
   startGather: (nodeId: NodeId) => void;
@@ -91,6 +94,7 @@ export type World = {
   setJob: (job: Job | null) => void;
   setFields: (fields: Field[]) => void;
   setVillagers: (villagers: Villager[]) => void;
+  setBuildings: (buildings: Building[]) => void;
   destroy: () => void;
 };
 
@@ -98,7 +102,7 @@ export type World = {
 type Target =
   | { kind: "node"; id: NodeId }
   | { kind: "field"; id: string }
-  | { kind: "building"; id: BuildingId };
+  | { kind: "building"; id: string };
 
 /** A villager drawn on the map, and (while idle) the stroll it's on. Idle wandering is client-only. */
 type VillagerSprite = { figure: Phaser.GameObjects.Container; at: Point; stroll: Stroll | null };
@@ -137,6 +141,10 @@ class WorldScene extends Phaser.Scene {
   private drawnFields: string | null = null;
   private fieldLayer: Phaser.GameObjects.Container | null = null;
   private villagers: Villager[];
+  private buildings: Building[];
+  /** What the building layer last drew; redrawn when this changes. */
+  private drawnBuildings: string | null = null;
+  private buildingLayer: Phaser.GameObjects.Container | null = null;
   private villagerLayer: Phaser.GameObjects.Container | null = null;
   private readonly villagerSprites = new Map<string, VillagerSprite>();
   private avatar!: Phaser.GameObjects.Container;
@@ -158,6 +166,12 @@ class WorldScene extends Phaser.Scene {
     this.job = options.job;
     this.fields = options.fields;
     this.villagers = options.villagers;
+    this.buildings = options.buildings;
+  }
+
+  /** The server's latest word on the buildings. Safe to call before the scene starts. */
+  setBuildings(buildings: Building[]) {
+    this.buildings = buildings;
   }
 
   /** The server's latest word on the character's job. Safe to call before the scene starts. */
@@ -197,10 +211,8 @@ class WorldScene extends Phaser.Scene {
     for (const id of nodesIn(this.options.character.region)) {
       drawNode(nodes, RESOURCE_NODES[id]);
     }
-    const buildings = this.add.graphics();
-    for (const id of buildingsIn(this.options.character.region)) {
-      this.drawBuilding(buildings, BUILDINGS[id]);
-    }
+    this.buildingLayer = this.add.container(0, 0);
+    this.drawBuildings();
 
     // Villagers walk over fields and buildings but below the player's character.
     this.villagerLayer = this.add.container(0, 0);
@@ -247,7 +259,7 @@ class WorldScene extends Phaser.Scene {
       const { region } = this.options.character;
       const nodeId = nodeAt(tile, region);
       const field = fieldAt(this.fields, tile, region);
-      const buildingId = buildingAt(tile, region);
+      const building = buildingAt(this.buildings, tile, region);
       this.turningToward = null;
       if (nodeId) {
         const approach = nearestAdjacentTile(this.position, RESOURCE_NODES[nodeId], this.region);
@@ -258,9 +270,9 @@ class WorldScene extends Phaser.Scene {
         const approach = nearestAdjacentTile(this.position, field, this.region);
         this.target = approach ? { kind: "field", id: field.id } : null;
         this.destination = approach;
-      } else if (buildingId && BUILDINGS[buildingId].kind === "storehouse") {
-        const approach = approachTile(this.position, BUILDINGS[buildingId], this.region);
-        this.target = approach ? { kind: "building", id: buildingId } : null;
+      } else if (building?.kind === "storehouse") {
+        const approach = approachTile(this.position, building, this.region, this.buildings);
+        this.target = approach ? { kind: "building", id: building.id } : null;
         this.destination = approach;
       } else {
         // Open ground, or a building with nothing to do yet (buildings don't block walking).
@@ -329,12 +341,17 @@ class WorldScene extends Phaser.Scene {
     }
 
     this.drawProgress();
+    this.drawBuildings();
     this.drawFields();
     this.drawVillagers();
   }
 
   private fieldById(id: string): Field | null {
     return this.fields.find((f) => f.id === id) ?? null;
+  }
+
+  private buildingById(id: string): Building | null {
+    return this.buildings.find((b) => b.id === id) ?? null;
   }
 
   /** Standing still next to the target, with the server agreeing where we stand. */
@@ -354,8 +371,12 @@ class WorldScene extends Phaser.Scene {
         if (!field) return !settled.inFlight && !settled.stepping;
         return readyToGather({ ...settled, node: field });
       }
-      case "building":
-        return readyAtBuilding({ ...settled, building: BUILDINGS[target.id] });
+      case "building": {
+        const building = this.buildingById(target.id);
+        // Removed while we walked: drop it once settled.
+        if (!building) return !settled.inFlight && !settled.stepping;
+        return readyAtBuilding({ ...settled, building });
+      }
     }
   }
 
@@ -374,11 +395,14 @@ class WorldScene extends Phaser.Scene {
           toward: field ? turnBeforeGather(this.position, field, this.serverFacing) : null,
         };
       }
-      case "building":
+      case "building": {
+        const building = this.buildingById(target.id);
+        if (!building) return { act: () => {}, toward: null };
         return {
           act: () => this.options.openStorehouse(),
-          toward: turnTowardBuilding(this.position, BUILDINGS[target.id], this.serverFacing),
+          toward: turnTowardBuilding(this.position, building, this.serverFacing),
         };
+      }
     }
   }
 
@@ -454,23 +478,51 @@ class WorldScene extends Phaser.Scene {
   }
 
   /**
+   * Draws the buildings: a labelled square each until we have pixel art. Cheap
+   * to call every frame: it only redraws when the buildings changed.
+   */
+  private drawBuildings() {
+    const layer = this.buildingLayer;
+    if (!layer) return;
+    const shown = buildingsIn(this.buildings, this.options.character.region);
+    const key = shown.map((b) => `${b.id}:${b.kind}@${b.x},${b.y}`).join("|");
+    if (key === this.drawnBuildings) return;
+    this.drawnBuildings = key;
+    layer.removeAll(true);
+    const g = this.add.graphics();
+    layer.add(g);
+    for (const building of shown) layer.add(this.drawBuilding(g, building));
+  }
+
+  /** Where a villager's house is, for idle wandering; null when its house is gone or elsewhere. */
+  private homeOf(villager: Villager): Home | null {
+    const house = this.buildingById(villager.houseId);
+    if (!house || house.region !== this.options.character.region) return null;
+    return { door: houseDoor(house), region: house.region, buildings: this.buildings };
+  }
+
+  /**
    * Places every villager: working ones follow the shared timeline (the same
    * one the server settles by), bobbing while they gather; idle ones stroll to
-   * random spots near the house and pause. Only drawn in the house's region.
+   * random spots near their house and pause. Only drawn in their house's region.
    */
   private drawVillagers() {
     const layer = this.villagerLayer;
     if (!layer) return;
-    const home = this.options.character.region === BUILDINGS.heartland_house.region;
-    layer.setVisible(home);
-    if (!home) return;
     const now = Date.now();
     for (const villager of this.villagers) {
-      const sprite = this.villagerSprite(villager, layer, now);
+      const home = this.homeOf(villager);
+      if (!home) {
+        this.villagerSprites.get(villager.id)?.figure.setVisible(false);
+        continue;
+      }
+      const sprite = this.villagerSprite(villager, layer, home, now);
+      sprite.figure.setVisible(true);
       const target = villager.task && this.taskTarget(villager.task);
+      const route = villagerRoute(this.buildings, villager);
       let bob = 0;
-      if (villager.task && target) {
-        const doing = villagerActivity(villager.task, target, now);
+      if (villager.task && target && route) {
+        const doing = villagerActivity(villager.task, target, route, now);
         sprite.at = { x: doing.x, y: doing.y };
         sprite.stroll = null;
         if (doing.activity === "gathering") {
@@ -479,7 +531,7 @@ class WorldScene extends Phaser.Scene {
       } else {
         // Idle (or its field just ran out and the server will say so): wander from where it stands.
         if (!sprite.stroll || now >= sprite.stroll.nextAt) {
-          sprite.stroll = planStroll(sprite.at, now, Math.random, this.region);
+          sprite.stroll = planStroll(sprite.at, now, Math.random, this.region, home);
         }
         sprite.at = strollPosition(sprite.stroll, now);
       }
@@ -491,6 +543,7 @@ class WorldScene extends Phaser.Scene {
   private villagerSprite(
     villager: Villager,
     layer: Phaser.GameObjects.Container,
+    home: Home,
     now: number,
   ): VillagerSprite {
     const existing = this.villagerSprites.get(villager.id);
@@ -510,7 +563,7 @@ class WorldScene extends Phaser.Scene {
     const figure = this.add.container(0, 0, [body, head, label]);
     layer.add(figure);
     // Start somewhere near the house, resting for a moment before the first stroll.
-    const at = pickWanderTile(Math.random, this.region);
+    const at = pickWanderTile(Math.random, this.region, home);
     const rest = Math.random() * 3_000;
     const stroll: Stroll = { from: at, to: at, departAt: now, arriveAt: now, nextAt: now + rest };
     const sprite = { figure, at, stroll };
@@ -518,7 +571,7 @@ class WorldScene extends Phaser.Scene {
     return sprite;
   }
 
-  /** A labelled square over the footprint until we have pixel art. */
+  /** A labelled square over the footprint until we have pixel art. Returns the label. */
   private drawBuilding(g: Phaser.GameObjects.Graphics, building: Building) {
     const style = BUILDING_STYLES[building.kind];
     const left = building.x * TILE;
@@ -529,7 +582,7 @@ class WorldScene extends Phaser.Scene {
     g.fillRect(left + 2, top + 2, width - 4, height - 4);
     g.lineStyle(3, style.outline, 1);
     g.strokeRect(left + 2, top + 2, width - 4, height - 4);
-    this.add
+    return this.add
       .text(left + width / 2, top + height / 2, style.label, {
         fontFamily: "Georgia, serif",
         fontSize: "11px",
@@ -694,6 +747,7 @@ export function createGame(parent: HTMLElement, options: WorldOptions): World {
     setJob: (job) => scene.setJob(job),
     setFields: (fields) => scene.setFields(fields),
     setVillagers: (villagers) => scene.setVillagers(villagers),
+    setBuildings: (buildings) => scene.setBuildings(buildings),
     destroy: () => {
       resizes.disconnect();
       game.destroy(true);

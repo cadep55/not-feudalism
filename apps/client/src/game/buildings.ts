@@ -1,13 +1,4 @@
-import {
-  BUILDING_IDS,
-  BUILDINGS,
-  type Building,
-  type BuildingId,
-  covers,
-  type Direction,
-  tileDistance,
-  tileInFront,
-} from "@nf/shared";
+import { type Building, covers, type Direction, tileDistance, tileInFront } from "@nf/shared";
 import { nodeAt } from "./gathering.ts";
 import type { RegionSize, Tile } from "./movement.ts";
 
@@ -15,13 +6,17 @@ import type { RegionSize, Tile } from "./movement.ts";
 const FACING_PREFERENCE: readonly Direction[] = ["n", "e", "s", "w", "ne", "se", "sw", "nw"];
 
 /** The buildings drawn on a region's map. */
-export function buildingsIn(region: string): BuildingId[] {
-  return BUILDING_IDS.filter((id) => BUILDINGS[id].region === region);
+export function buildingsIn(buildings: readonly Building[], region: string): Building[] {
+  return buildings.filter((b) => b.region === region);
 }
 
 /** The building covering a tile, or null when the tile is open ground. */
-export function buildingAt(tile: Tile, region: string): BuildingId | null {
-  return buildingsIn(region).find((id) => covers(BUILDINGS[id], tile)) ?? null;
+export function buildingAt(
+  buildings: readonly Building[],
+  tile: Tile,
+  region: string,
+): Building | null {
+  return buildingsIn(buildings, region).find((b) => covers(b, tile)) ?? null;
 }
 
 /** Steps (diagonals included) from a tile to the nearest tile of a building's footprint. */
@@ -72,7 +67,12 @@ export function turnTowardBuilding(
  * another building). Never a tile inside the footprint. Ties prefer the sides
  * over the corners, then the straighter approach. Null when no tile is free.
  */
-export function approachTile(from: Tile, building: Building, region: RegionSize): Tile | null {
+export function approachTile(
+  from: Tile,
+  building: Building,
+  region: RegionSize,
+  buildings: readonly Building[],
+): Tile | null {
   if (isBeside(from, building)) return from;
   let best: { tile: Tile; steps: number; corner: boolean; straightLine: number } | null = null;
   for (let y = building.y - 1; y <= building.y + building.height; y++) {
@@ -80,7 +80,8 @@ export function approachTile(from: Tile, building: Building, region: RegionSize)
       const tile = { x, y };
       if (!isBeside(tile, building)) continue;
       const onMap = x >= 0 && y >= 0 && x < region.width && y < region.height;
-      if (!onMap || nodeAt(tile, building.region) || buildingAt(tile, building.region)) continue;
+      const taken = nodeAt(tile, building.region) || buildingAt(buildings, tile, building.region);
+      if (!onMap || taken) continue;
       const steps = tileDistance(from, tile);
       const corner = facingToward(tile, building)?.length === 2;
       const straightLine = (x - from.x) ** 2 + (y - from.y) ** 2;

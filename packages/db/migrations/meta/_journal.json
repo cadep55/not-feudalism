@@ -71,6 +71,27 @@
       "when": 1792894980753,
       "tag": "0009_starting_villagers",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1792953449591,
+      "tag": "0010_player_buildings",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1792953451932,
+      "tag": "0011_storehouse_items_per_building",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1792953453889,
+      "tag": "0012_starting_buildings",
+      "breakpoints": true
     }
   ]
 }

@@ -4,10 +4,14 @@ import {
   FIELD_GROW_MS,
   type Field,
   type GameState,
+  houseDoor,
   type Job,
   type NodeId,
   newField,
   RESOURCE_NODES,
+  STARTING_BUILDINGS,
+  STARTING_HOUSE,
+  STARTING_STOREHOUSE,
   taskTimeline,
   type Villager,
 } from "@nf/shared";
@@ -163,7 +167,12 @@ describe("GameScreen gathering", () => {
   function gathering(now: number): GameState {
     return {
       ...ALICE_STATE,
-      job: { kind: "gather", nodeId: "heartland_tree", startedAt: now, completesAt: now + 3_000 },
+      job: {
+        kind: "gather",
+        nodeId: "heartland_tree",
+        startedAt: now,
+        completesAt: now + 3_000,
+      },
     };
   }
 
@@ -271,7 +280,12 @@ describe("GameScreen farming", () => {
   function harvesting(now: number): GameState {
     return {
       ...AT_FIELD,
-      job: { kind: "harvest", fieldId: FIELD.id, startedAt: now, completesAt: now + 3_000 },
+      job: {
+        kind: "harvest",
+        fieldId: FIELD.id,
+        startedAt: now,
+        completesAt: now + 3_000,
+      },
     };
   }
 
@@ -499,7 +513,7 @@ describe("GameScreen storehouse", () => {
     ...ALICE_STATE,
     character: { ...ALICE_STATE.character, x: 14, y: 8, facing: "e" },
     inventory: { wood: 3 },
-    storage: { stone: 7 },
+    storage: { heartland_storehouse: { stone: 7 } },
   };
 
   /** The game reports the character arrived at the storehouse, which opens it over the map. */
@@ -519,7 +533,11 @@ describe("GameScreen storehouse", () => {
   }
 
   it("stores all carried wood and shows it in the storehouse", async () => {
-    const stored: GameState = { ...AT_STOREHOUSE, inventory: {}, storage: { wood: 3, stone: 7 } };
+    const stored: GameState = {
+      ...AT_STOREHOUSE,
+      inventory: {},
+      storage: { heartland_storehouse: { wood: 3, stone: 7 } },
+    };
     const api = fakeApi({
       getState: vi.fn(async () => ({ ok: true as const, value: AT_STOREHOUSE })),
       sendAction: vi.fn(async () => ({ ok: true as const, value: stored })),
@@ -542,7 +560,7 @@ describe("GameScreen storehouse", () => {
     const taken: GameState = {
       ...AT_STOREHOUSE,
       inventory: { wood: 3, stone: 5 },
-      storage: { stone: 2 },
+      storage: { heartland_storehouse: { stone: 2 } },
     };
     const api = fakeApi({
       getState: vi.fn(async () => ({ ok: true as const, value: AT_STOREHOUSE })),
@@ -649,10 +667,10 @@ describe("GameScreen villagers", () => {
 
   const IDLE: GameState = {
     ...ALICE_STATE,
-    storage: { rake: 1 },
+    storage: { heartland_storehouse: { rake: 1 } },
     villagers: [
-      { id: "v1", name: "Aldric", task: null },
-      { id: "v2", name: "Maud", task: null },
+      { id: "v1", name: "Aldric", houseId: "heartland_house", task: null },
+      { id: "v2", name: "Maud", houseId: "heartland_house", task: null },
     ],
   };
 
@@ -660,11 +678,18 @@ describe("GameScreen villagers", () => {
     return {
       ...IDLE,
       villagers: [
-        { id: "v1", name: "Aldric", task: null },
+        { id: "v1", name: "Aldric", houseId: "heartland_house", task: null },
         {
           id: "v2",
           name: "Maud",
-          task: { kind: "gather", nodeId: "heartland_tree", since, delivered: 0 },
+          houseId: "heartland_house",
+          task: {
+            kind: "gather",
+            nodeId: "heartland_tree",
+            storehouseId: "heartland_storehouse",
+            since,
+            delivered: 0,
+          },
         },
       ],
     };
@@ -734,15 +759,27 @@ describe("GameScreen villagers", () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     const since = Date.now();
     const started = working(since);
+    const route = {
+      door: houseDoor(STARTING_HOUSE),
+      storehouse: STARTING_STOREHOUSE,
+      buildings: [...STARTING_BUILDINGS],
+    };
     const t = taskTimeline(
-      { kind: "gather", nodeId: "heartland_tree", since, delivered: 0 },
+      {
+        kind: "gather",
+        nodeId: "heartland_tree",
+        storehouseId: "heartland_storehouse",
+        since,
+        delivered: 0,
+      },
       RESOURCE_NODES.heartland_tree,
+      route,
     );
     const firstAt = t.outbound + t.cycle - t.leg;
     const delivered: GameState = {
       ...started,
       character: { ...started.character, x: 14, y: 8, facing: "e" },
-      storage: { rake: 1, wood: 5 },
+      storage: { heartland_storehouse: { rake: 1, wood: 5 } },
       villagers: started.villagers.map((v) =>
         v.task ? { ...v, task: { ...v.task, delivered: 1 } } : v,
       ),

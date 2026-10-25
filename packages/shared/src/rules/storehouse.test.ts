@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { BUILDINGS, CARRY_LIMIT, STOREHOUSE_LIMIT } from "../data/buildings.ts";
+import {
+  CARRY_LIMIT,
+  STARTING_BUILDINGS,
+  STARTING_STOREHOUSE,
+  STOREHOUSE_LIMIT,
+} from "../data/buildings.ts";
 import { RESOURCE_NODES } from "../data/resources.ts";
 import type { Direction } from "../game/direction.ts";
 import type { GameState, Inventory } from "../game/state.ts";
@@ -8,7 +13,7 @@ import { startCraft } from "./craft.ts";
 import { startGather } from "./gather.ts";
 import { atStorehouse, storeItems, takeItems } from "./storehouse.ts";
 
-const store = BUILDINGS.heartland_storehouse;
+const store = STARTING_STOREHOUSE;
 const tree = RESOURCE_NODES.heartland_tree;
 // West of the storehouse's top-left tile, facing east into it.
 const AT_DOOR = { x: store.x - 1, y: store.y, facing: "e" as Direction };
@@ -29,7 +34,8 @@ function state(
       ...where,
     },
     inventory,
-    storage,
+    storage: { [store.id]: storage },
+    buildings: [...STARTING_BUILDINGS],
     fields: [],
     villagers: [],
     job: null,
@@ -69,6 +75,22 @@ describe("storing", () => {
     const nearlyFull = state(AT_DOOR, { wood: 2 }, { wood: STOREHOUSE_LIMIT - 1 });
     expect(storeItems(nearlyFull, "wood", 2)).toEqual({ ok: false, reason: "storehouse_full" });
     expect(storeItems(nearlyFull, "wood", 1).ok).toBe(true);
+  });
+});
+
+describe("more than one storehouse", () => {
+  it("each keeps its own stock: storing fills the one the character faces", () => {
+    const north = { ...store, id: "north_storehouse", x: 2, y: 1 };
+    const s: GameState = {
+      ...state({ x: north.x + 2, y: north.y, facing: "w" }, { wood: 3 }, { wood: 50 }),
+      buildings: [...STARTING_BUILDINGS, north],
+    };
+    const stored = storeItems(s, "wood", 2);
+    expect(stored.ok && stored.value.storage).toEqual({
+      [store.id]: { wood: 50 },
+      [north.id]: { wood: 2 },
+    });
+    expect(takeItems(s, "wood", 1)).toEqual({ ok: false, reason: "not_enough_items" });
   });
 });
 

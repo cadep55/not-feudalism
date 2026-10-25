@@ -5,11 +5,18 @@ import { describe, expect, it, vi } from "vitest";
 import { VillagersMenu } from "./VillagersMenu.tsx";
 
 const VILLAGERS: Villager[] = [
-  { id: "v1", name: "Aldric", task: null },
+  { id: "v1", name: "Aldric", houseId: "heartland_house", task: null },
   {
     id: "v2",
     name: "Maud",
-    task: { kind: "gather", nodeId: "heartland_tree", since: 0, delivered: 0 },
+    houseId: "heartland_house",
+    task: {
+      kind: "gather",
+      nodeId: "heartland_tree",
+      storehouseId: "heartland_storehouse",
+      since: 0,
+      delivered: 0,
+    },
   },
 ];
 
