@@ -14,7 +14,6 @@ const { db, close } = createDb(DATABASE_URL);
 const servers: { close: () => void }[] = [];
 
 const tree = RESOURCE_NODES.heartland_tree;
-const farm = RESOURCE_NODES.heartland_farm;
 
 // The game's clock, an hour ahead of real time so new characters may walk anywhere.
 let clock = Date.now() + 60 * 60 * 1000;
@@ -215,22 +214,6 @@ describe("gathering", () => {
     expect(s.job).toBeNull();
     const [job] = await db.select().from(jobs).where(eq(jobs.characterId, characterId));
     expect(job).toMatchObject({ outcome: "cancelled" });
-  });
-
-  it("needs a rake for wheat", async () => {
-    const { cookie, characterId } = await newPlayer();
-    await act(cookie, "move.to", { x: farm.x + 1, y: farm.y });
-    // Face the node (west of us), as the client does before gathering.
-    await act(cookie, "turn", { facing: "w" });
-    const refused = await act(cookie, "gather.start", { nodeId: "heartland_farm" });
-    expect(refused.status).toBe(422);
-    expect(await refused.json()).toEqual({ error: "missing_tool" });
-
-    // Crafting arrives in #20; give the rake directly for now.
-    await db.insert(inventories).values({ characterId, itemId: "rake", quantity: 1 });
-    expect((await act(cookie, "gather.start", { nodeId: "heartland_farm" })).status).toBe(200);
-    clock += GATHER_DURATION_MS;
-    expect((await state(cookie)).inventory).toEqual({ rake: 1, wheat: 1 });
   });
 
   it("rejects unknown nodes", async () => {

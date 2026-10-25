@@ -25,6 +25,7 @@ function stateWith(inventory: Inventory, overrides: Partial<GameState> = {}): Ga
     },
     inventory,
     storage: {},
+    fields: [],
     job: null,
     ...overrides,
   };

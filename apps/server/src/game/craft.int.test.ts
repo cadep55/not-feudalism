@@ -15,7 +15,8 @@ const servers: { close: () => void }[] = [];
 
 const CRAFT_MS = RECIPES.rake.durationMs;
 const tree = RESOURCE_NODES.heartland_tree;
-const farm = RESOURCE_NODES.heartland_farm;
+// The starting wheat field (STARTING_FIELDS).
+const farm = { x: 13, y: 14, id: "heartland:13,14" };
 
 // The game's clock, an hour ahead of real time so new characters may walk anywhere.
 let clock = Date.now() + 60 * 60 * 1000;
@@ -148,7 +149,7 @@ describe("crafting the rake", () => {
     await act(cookie, "move.to", { x: farm.x + 1, y: farm.y });
     // Face the node (west of us), as the client does before gathering.
     await act(cookie, "turn", { facing: "w" });
-    expect((await act(cookie, "gather.start", { nodeId: "heartland_farm" })).status).toBe(200);
+    expect((await act(cookie, "field.harvest", { fieldId: farm.id })).status).toBe(200);
     clock += 3_000;
     expect((await state(cookie)).inventory).toEqual({ rake: 1, wheat: 1 });
   });

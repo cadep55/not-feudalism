@@ -6,6 +6,7 @@ import {
   isNodeId,
   NODE_IDS,
   RESOURCE_NODES,
+  type ResourceNode,
 } from "./resources.ts";
 import { REGIONS, SPAWN_POINT } from "./world.ts";
 
@@ -22,7 +23,7 @@ describe("item data", () => {
 
 describe("resource node data", () => {
   it.each(NODE_IDS)("%s yields a real item, needs only tools, and sits on its map", (id) => {
-    const node = RESOURCE_NODES[id];
+    const node: ResourceNode = RESOURCE_NODES[id];
     expect(isItemId(node.yields)).toBe(true);
     if (node.requires) expect(ITEMS[node.requires].kind).toBe("tool");
     const region = REGIONS[node.region];
@@ -38,9 +39,9 @@ describe("resource node data", () => {
     expect(spots).not.toContain(`${SPAWN_POINT.x},${SPAWN_POINT.y}`);
   });
 
-  it("has one node for each starting resource", () => {
+  it("has one node for each gathered resource (wheat comes from fields)", () => {
     const yields = NODE_IDS.map((id) => RESOURCE_NODES[id].yields).sort();
-    expect(yields).toEqual(["stone", "wheat", "wood"]);
+    expect(yields).toEqual(["stone", "wood"]);
   });
 
   it("recognises node IDs", () => {

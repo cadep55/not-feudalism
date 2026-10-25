@@ -1,6 +1,7 @@
-import { characters, type DbExecutor, inventories, jobs, storehouseItems } from "@nf/db";
+import { characters, type DbExecutor, fields, inventories, jobs, storehouseItems } from "@nf/db";
 import {
   DEFAULT_FACING,
+  type Field,
   type GameState,
   type Inventory,
   ITEM_IDS,
@@ -29,6 +30,7 @@ export async function loadStateForUpdate(db: DbExecutor, characterId: string): P
 
   const inventory = await loadItems(db, inventories, characterId);
   const storage = await loadItems(db, storehouseItems, characterId);
+  const fieldRows = await db.select().from(fields).where(eq(fields.characterId, characterId));
 
   const [active] = await db
     .select()
@@ -59,8 +61,60 @@ export async function loadStateForUpdate(db: DbExecutor, characterId: string): P
     },
     inventory,
     storage,
+    fields: fieldRows.map(toField),
     job,
   };
+}
+
+function toField(row: typeof fields.$inferSelect): Field {
+  return {
+    id: row.fieldId,
+    region: row.region,
+    x: row.x,
+    y: row.y,
+    wheat: row.wheat,
+    seeds: row.seeds,
+    harvests: row.harvests,
+    readyAt: row.readyAt.getTime(),
+  };
+}
+
+/** Inserts new fields, updates changed ones, deletes fields that are gone. */
+async function saveFields(
+  db: DbExecutor,
+  characterId: string,
+  before: Field[],
+  after: Field[],
+  now: Date,
+): Promise<void> {
+  const previous = new Map(before.map((f) => [f.id, f]));
+  const current = new Set(after.map((f) => f.id));
+  for (const field of after) {
+    const old = previous.get(field.id);
+    if (old && JSON.stringify(old) === JSON.stringify(field)) continue;
+    const values = {
+      region: field.region,
+      x: field.x,
+      y: field.y,
+      wheat: field.wheat,
+      seeds: field.seeds,
+      harvests: field.harvests,
+      readyAt: new Date(field.readyAt),
+    };
+    await db
+      .insert(fields)
+      .values({ characterId, fieldId: field.id, ...values })
+      .onConflictDoUpdate({
+        target: [fields.characterId, fields.fieldId],
+        set: { ...values, updatedAt: now },
+      });
+  }
+  for (const field of before) {
+    if (current.has(field.id)) continue;
+    await db
+      .delete(fields)
+      .where(and(eq(fields.characterId, characterId), eq(fields.fieldId, field.id)));
+  }
 }
 
 /** The two item-count tables: what a character carries, and what its storehouse holds. */
@@ -112,10 +166,13 @@ async function saveItems(
 
 /** The job a row describes, or null when its kind or payload isn't one this version knows. */
 function toJob(row: typeof jobs.$inferSelect): Job | null {
-  const payload = row.payload as { nodeId?: unknown; recipeId?: unknown };
+  const payload = row.payload as { nodeId?: unknown; recipeId?: unknown; fieldId?: unknown };
   const times = { startedAt: row.startedAt.getTime(), completesAt: row.completesAt.getTime() };
   if (row.kind === "gather" && typeof payload.nodeId === "string" && isNodeId(payload.nodeId)) {
     return { kind: "gather", nodeId: payload.nodeId, ...times };
+  }
+  if (row.kind === "harvest" && typeof payload.fieldId === "string") {
+    return { kind: "harvest", fieldId: payload.fieldId, ...times };
   }
   if (
     row.kind === "craft" &&
@@ -132,6 +189,8 @@ function jobPayload(job: Job): Record<string, string> {
   switch (job.kind) {
     case "gather":
       return { nodeId: job.nodeId };
+    case "harvest":
+      return { fieldId: job.fieldId };
     case "craft":
       return { recipeId: job.recipeId };
   }
@@ -162,6 +221,7 @@ export async function saveState(
 
   await saveItems(db, inventories, characterId, before.inventory, after.inventory, now);
   await saveItems(db, storehouseItems, characterId, before.storage, after.storage, now);
+  await saveFields(db, characterId, before.fields, after.fields, now);
 
   const jobChanged = JSON.stringify(before.job) !== JSON.stringify(after.job);
   if (jobChanged && before.job) {

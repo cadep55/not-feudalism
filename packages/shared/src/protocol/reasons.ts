@@ -21,6 +21,10 @@ export const FAILURE_REASONS = [
   "not_at_storehouse",
   "not_enough_items",
   "storehouse_full",
+  "no_field",
+  "field_growing",
+  "no_seeds",
+  "cannot_plant_here",
   "protocol_mismatch",
 ] as const;
 

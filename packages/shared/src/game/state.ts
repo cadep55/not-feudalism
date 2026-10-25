@@ -33,6 +33,14 @@ export type GatherJob = {
   completesAt: number;
 };
 
+export type HarvestJob = {
+  kind: "harvest";
+  /** The field's id (see fieldId()). */
+  fieldId: string;
+  startedAt: number;
+  completesAt: number;
+};
+
 export type CraftJob = {
   kind: "craft";
   recipeId: RecipeId;
@@ -40,7 +48,25 @@ export type CraftJob = {
   completesAt: number;
 };
 
-export type Job = GatherJob | CraftJob;
+export type Job = GatherJob | HarvestJob | CraftJob;
+
+/**
+ * A wheat field in the character's world. Fields run out and new ones can be
+ * planted, so unlike tree and rock nodes they live in game state.
+ */
+export type Field = {
+  /** One field per tile, so the id is derived from where it is (see fieldId()). */
+  id: string;
+  region: string;
+  x: number;
+  y: number;
+  wheat: number;
+  seeds: number;
+  /** Harvests taken so far; every SEED_EVERY-th also yields a seed. */
+  harvests: number;
+  /** When it can first be harvested (epoch ms); planted fields grow until then. */
+  readyAt: number;
+};
 
 export type GameState = {
   character: CharacterState;
@@ -48,6 +74,8 @@ export type GameState = {
   inventory: Inventory;
   /** What the character's storehouse holds (at most STOREHOUSE_LIMIT of each). */
   storage: Inventory;
+  /** Wheat fields in the character's world. */
+  fields: Field[];
   /** The character's job in progress, or null when idle. */
   job: Job | null;
 };

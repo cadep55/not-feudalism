@@ -4,6 +4,7 @@ export const ITEMS = {
   wood: { name: "Wood", kind: "resource" },
   stone: { name: "Stone", kind: "resource" },
   wheat: { name: "Wheat", kind: "resource" },
+  wheat_seeds: { name: "Wheat seeds", kind: "resource" },
   // The first tool. Recipe (2 wood + 1 stone) arrives with crafting in issue #20.
   rake: { name: "Rake", kind: "tool" },
 } as const satisfies Record<string, { name: string; kind: "resource" | "tool" }>;
