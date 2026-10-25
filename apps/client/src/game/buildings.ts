@@ -19,6 +19,17 @@ export function buildingAt(
   return buildingsIn(buildings, region).find((b) => covers(b, tile)) ?? null;
 }
 
+/**
+ * What the map has drawn: the buildings standing, and the one going up or
+ * coming down (drawn see-through). It redraws only when this changes. The
+ * site is marked as one, so a building that finishes going up is drawn again,
+ * solid, even though the same building is now in the list.
+ */
+export function drawnBuildingsKey(shown: readonly Building[], site: Building | null): string {
+  const describe = (b: Building) => `${b.id}:${b.kind}@${b.x},${b.y}`;
+  return [...shown.map(describe), site ? `site=${describe(site)}` : ""].join("|");
+}
+
 /** Steps (diagonals included) from a tile to the nearest tile of a building's footprint. */
 function distanceToFootprint(tile: Tile, building: Building): number {
   const nearest = {

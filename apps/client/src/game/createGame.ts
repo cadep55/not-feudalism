@@ -23,6 +23,7 @@ import {
   approachTile,
   buildingAt,
   buildingsIn,
+  drawnBuildingsKey,
   readyAtBuilding,
   turnTowardBuilding,
 } from "./buildings.ts";
@@ -554,9 +555,7 @@ class WorldScene extends Phaser.Scene {
     const shown = buildingsIn(this.buildings, region);
     const working = this.job?.kind === "build" || this.job?.kind === "remove" ? this.job : null;
     const site = working?.building.region === region ? working.building : null;
-    const key = [...shown, ...(site ? [site] : [])]
-      .map((b) => `${b.id}:${b.kind}@${b.x},${b.y}`)
-      .join("|");
+    const key = drawnBuildingsKey(shown, site);
     if (key === this.drawnBuildings) return;
     this.drawnBuildings = key;
     layer.removeAll(true);
