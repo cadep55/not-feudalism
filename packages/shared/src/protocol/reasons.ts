@@ -27,6 +27,12 @@ export const FAILURE_REASONS = [
   "cannot_plant_here",
   "no_villager",
   "no_rake_in_storehouse",
+  "building_limit",
+  "cannot_build_here",
+  "no_building",
+  "last_building",
+  "storehouse_not_empty",
+  "no_room_for_refund",
   "protocol_mismatch",
 ] as const;
 

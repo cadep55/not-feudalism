@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { BUILDING_KINDS } from "../data/buildings.ts";
 import { ITEM_IDS } from "../data/items.ts";
 import { RECIPE_IDS } from "../data/recipes.ts";
 import { NODE_IDS } from "../data/resources.ts";
@@ -45,6 +46,18 @@ export type VillagerAssign = z.infer<typeof VillagerAssign>;
 /** Intent: start crafting a recipe (anywhere). */
 export const CraftStart = z.strictObject({ recipeId: z.enum(RECIPE_IDS) });
 export type CraftStart = z.infer<typeof CraftStart>;
+
+/** Intent: put up a building with its top-left tile at (x, y). */
+export const BuildingBuild = z.strictObject({
+  kind: z.enum(BUILDING_KINDS),
+  x: coordinate,
+  y: coordinate,
+});
+export type BuildingBuild = z.infer<typeof BuildingBuild>;
+
+/** Intent: take one of the character's buildings down. */
+export const BuildingRemove = z.strictObject({ buildingId: z.string().min(1).max(64) });
+export type BuildingRemove = z.infer<typeof BuildingRemove>;
 
 /** Intent: say something in the current region's chat. */
 export const ChatSend = z.strictObject({

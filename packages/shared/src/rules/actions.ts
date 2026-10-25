@@ -1,6 +1,7 @@
 import type { GameState } from "../game/state.ts";
 import type { GameAction } from "../protocol/actions.ts";
 import { ok, type RuleResult } from "../result.ts";
+import { type BuildFailure, type RemoveFailure, startBuild, startRemove } from "./build.ts";
 import { startCraft } from "./craft.ts";
 import { plantSeed, startHarvest } from "./farming.ts";
 import { startGather } from "./gather.ts";
@@ -24,7 +25,9 @@ export type ActionFailure =
   | "no_seeds"
   | "cannot_plant_here"
   | "no_villager"
-  | "no_rake_in_storehouse";
+  | "no_rake_in_storehouse"
+  | BuildFailure
+  | RemoveFailure;
 
 /**
  * Applies one action to a game state. Pure: the server loads the state, calls
@@ -71,6 +74,10 @@ export function applyAction(
       return storeItems(current, action.payload.item, action.payload.quantity);
     case "storehouse.take":
       return takeItems(current, action.payload.item, action.payload.quantity);
+    case "building.build":
+      return startBuild(current, action.payload.kind, action.payload.x, action.payload.y, now);
+    case "building.remove":
+      return startRemove(current, action.payload.buildingId, now);
   }
 }
 

@@ -32,7 +32,11 @@ How players build and remove houses and storehouses. Owner decisions from 2026-1
 
 Farming takes a rake from the nearest storehouse to the field that has one, and returns it to the villager's storehouse (or the first storehouse, if that one is gone).
 
+**Building:** a `building.build` action starts a 10-second job; the cost leaves the inventory straight away, and the building appears when the job completes (a new house brings 3 villagers; a new storehouse starts empty). Like crafting, it keeps going while the character walks. The character can't stand on the footprint.
+
+**Removing:** a `building.remove` action is checked and paid up front: the building goes out of use, the refund is paid, and villagers are sorted out at once. The 5-second job is the time it takes, and shows where it stood. Villagers who delivered to a removed storehouse start their trip over with the nearest one left, and any villager whose path changed because tiles were freed starts over too.
+
 ## Not yet
 
-- Building and removing (the actions, the Build tab and placement) arrive in the next PR of #40
+- The Build tab, placement and the Remove button arrive in the next PR of #40
 - Buildings don't block walking yet; pathfinding is #33

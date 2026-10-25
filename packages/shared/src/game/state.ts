@@ -49,7 +49,26 @@ export type CraftJob = {
   completesAt: number;
 };
 
-export type Job = GatherJob | HarvestJob | CraftJob;
+/** Putting up a building; it appears when the job completes. Materials are paid at the start. */
+export type BuildJob = {
+  kind: "build";
+  building: Building;
+  startedAt: number;
+  completesAt: number;
+};
+
+/**
+ * Taking a building down. It's out of use (and the refund paid) from the
+ * start; the job is the time it takes, and shows where it stood.
+ */
+export type RemoveJob = {
+  kind: "remove";
+  building: Building;
+  startedAt: number;
+  completesAt: number;
+};
+
+export type Job = GatherJob | HarvestJob | CraftJob | BuildJob | RemoveJob;
 
 /**
  * A wheat field in the character's world. Fields run out and new ones can be

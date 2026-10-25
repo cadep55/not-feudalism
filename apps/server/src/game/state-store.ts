@@ -334,10 +334,37 @@ async function saveVillagers(
   }
 }
 
+/** A building saved in a job's payload, or null when it isn't a well-formed one. */
+function toPayloadBuilding(value: unknown): Building | null {
+  if (typeof value !== "object" || value === null) return null;
+  const b = value as Record<string, unknown>;
+  const numbers = [b.x, b.y, b.width, b.height].every((n) => Number.isInteger(n));
+  if (typeof b.id !== "string" || typeof b.region !== "string" || !numbers) return null;
+  if (typeof b.kind !== "string" || !isBuildingKind(b.kind)) return null;
+  return {
+    id: b.id,
+    region: b.region,
+    kind: b.kind,
+    x: b.x as number,
+    y: b.y as number,
+    width: b.width as number,
+    height: b.height as number,
+  };
+}
+
 /** The job a row describes, or null when its kind or payload isn't one this version knows. */
 function toJob(row: typeof jobs.$inferSelect): Job | null {
-  const payload = row.payload as { nodeId?: unknown; recipeId?: unknown; fieldId?: unknown };
+  const payload = row.payload as {
+    nodeId?: unknown;
+    recipeId?: unknown;
+    fieldId?: unknown;
+    building?: unknown;
+  };
   const times = { startedAt: row.startedAt.getTime(), completesAt: row.completesAt.getTime() };
+  if (row.kind === "build" || row.kind === "remove") {
+    const building = toPayloadBuilding(payload.building);
+    return building ? { kind: row.kind, building, ...times } : null;
+  }
   if (row.kind === "gather" && typeof payload.nodeId === "string" && isNodeId(payload.nodeId)) {
     return { kind: "gather", nodeId: payload.nodeId, ...times };
   }
@@ -355,8 +382,11 @@ function toJob(row: typeof jobs.$inferSelect): Job | null {
 }
 
 /** What a job stores in its payload column, besides kind and times. */
-function jobPayload(job: Job): Record<string, string> {
+function jobPayload(job: Job): Record<string, unknown> {
   switch (job.kind) {
+    case "build":
+    case "remove":
+      return { building: job.building };
     case "gather":
       return { nodeId: job.nodeId };
     case "harvest":
