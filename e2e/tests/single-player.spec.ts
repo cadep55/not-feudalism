@@ -209,7 +209,8 @@ test("a villager sent for wood fills the storehouse", async ({ page }) => {
   const villagers = page.getByRole("region", { name: "Villagers" });
   const storehouse = page.getByRole("region", { name: "Storehouse" });
 
-  await test.step("the house holds 3 idle villagers", async () => {
+  await test.step("the house holds 3 idle villagers (in the map's top-left dropdown)", async () => {
+    await page.getByRole("button", { name: /Villagers/ }).click();
     await expect(villagers.getByRole("listitem")).toHaveCount(3);
     for (const row of await villagers.getByRole("listitem").all()) {
       await expect(row).toContainText("Idle");

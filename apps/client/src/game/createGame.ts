@@ -683,10 +683,18 @@ export function createGame(parent: HTMLElement, options: WorldOptions): World {
     backgroundColor: "#2d4a22",
     scene,
   });
+  // The page layout scales the canvas to fit (e.g. when panels open or close), not only when
+  // the window resizes. Phaser maps clicks to tiles using the canvas's on-screen size, so
+  // re-measure whenever it changes, or clicks land on the wrong tile.
+  const resizes = new ResizeObserver(() => game.scale.refresh());
+  resizes.observe(parent);
   return {
     setJob: (job) => scene.setJob(job),
     setFields: (fields) => scene.setFields(fields),
     setVillagers: (villagers) => scene.setVillagers(villagers),
-    destroy: () => game.destroy(true),
+    destroy: () => {
+      resizes.disconnect();
+      game.destroy(true);
+    },
   };
 }
