@@ -1,4 +1,13 @@
-import type { CharacterState, Direction, GameState, Job, NodeId } from "@nf/shared";
+import {
+  type CharacterState,
+  type Direction,
+  FIELD_GROW_MS,
+  type Field,
+  type GameState,
+  type Job,
+  type NodeId,
+  newField,
+} from "@nf/shared";
 import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -13,8 +22,10 @@ const canvas = vi.hoisted(() => ({
   props: null as null | {
     character: CharacterState;
     job: Job | null;
+    fields: Field[];
     sendPosition: (t: Tile) => Promise<MoveOutcome>;
     startGather: (nodeId: NodeId) => void | Promise<void>;
+    startHarvest: (fieldId: string) => void | Promise<void>;
     turn: (facing: Direction) => Promise<boolean>;
     openStorehouse: () => void;
   },
@@ -178,7 +189,7 @@ describe("GameScreen gathering", () => {
     vi.useFakeTimers();
 
     await act(async () => {
-      await latest().startGather("heartland_farm");
+      await latest().startHarvest("heartland:13,14");
     });
     expect(screen.getByRole("alert")).toHaveTextContent("You need a rake to harvest wheat.");
     expect(latest().job).toBeNull();
@@ -230,6 +241,158 @@ describe("GameScreen gathering", () => {
       await latest().sendPosition({ x: 9, y: 9 });
     });
     expect(latest().job).toBeNull();
+  });
+});
+
+describe("GameScreen farming", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  function latest() {
+    const props = canvas.props;
+    if (!props) throw new Error("GameCanvas was not rendered");
+    return props;
+  }
+
+  const FIELD = newField("heartland", 13, 14, 0);
+  /** Beside the starting field at (13, 14), facing it, with a rake. */
+  const AT_FIELD: GameState = {
+    ...ALICE_STATE,
+    character: { ...ALICE_STATE.character, x: 12, y: 14, facing: "e" },
+    inventory: { rake: 1 },
+    fields: [FIELD],
+  };
+
+  function harvesting(now: number): GameState {
+    return {
+      ...AT_FIELD,
+      job: { kind: "harvest", fieldId: FIELD.id, startedAt: now, completesAt: now + 3_000 },
+    };
+  }
+
+  it("hands the fields to the game", async () => {
+    const api = fakeApi({ getState: vi.fn(async () => ({ ok: true as const, value: AT_FIELD })) });
+    await renderReady(api);
+    expect(latest().fields).toEqual([FIELD]);
+  });
+
+  it("sends field.harvest and shows the harvest running", async () => {
+    const started = harvesting(Date.now());
+    const api = fakeApi({
+      getState: vi.fn(async () => ({ ok: true as const, value: AT_FIELD })),
+      sendAction: vi.fn(async () => ({ ok: true as const, value: started })),
+    });
+    await renderReady(api);
+
+    await act(async () => {
+      await latest().startHarvest(FIELD.id);
+    });
+
+    expect(api.sendAction).toHaveBeenCalledWith({
+      type: "field.harvest",
+      payload: { fieldId: FIELD.id },
+    });
+    expect(latest().job).toEqual(started.job);
+    expect(screen.getByRole("status")).toHaveTextContent("Harvesting wheat…");
+  });
+
+  it("re-reads state when the harvest is due: wheat arrives and the field shrinks", async () => {
+    const api = fakeApi({ getState: vi.fn(async () => ({ ok: true as const, value: AT_FIELD })) });
+    await renderReady(api);
+    vi.useFakeTimers();
+    const harvested = { ...FIELD, wheat: FIELD.wheat - 1, harvests: 1 };
+    const finished: GameState = {
+      ...AT_FIELD,
+      inventory: { rake: 1, wheat: 1 },
+      fields: [harvested],
+      job: null,
+    };
+    vi.mocked(api.sendAction).mockResolvedValueOnce({ ok: true, value: harvesting(Date.now()) });
+    vi.mocked(api.getState).mockResolvedValue({ ok: true, value: finished });
+
+    await act(async () => {
+      await latest().startHarvest(FIELD.id);
+    });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(3_000 + JOB_SETTLE_MS);
+    });
+
+    expect(inventoryRows()).toEqual(["Wheat 1/5", "Rake 1/5"]);
+    expect(latest().fields).toEqual([harvested]);
+    expect(latest().job).toBeNull();
+  });
+
+  it("drops the harvest when walking away cancels it", async () => {
+    const api = fakeApi({ getState: vi.fn(async () => ({ ok: true as const, value: AT_FIELD })) });
+    await renderReady(api);
+    vi.mocked(api.sendAction).mockResolvedValueOnce({ ok: true, value: harvesting(Date.now()) });
+    await act(async () => {
+      await latest().startHarvest(FIELD.id);
+    });
+    expect(latest().job).not.toBeNull();
+
+    vi.mocked(api.sendAction).mockResolvedValueOnce({ ok: true, value: AT_FIELD });
+    await act(async () => {
+      await latest().sendPosition({ x: 11, y: 14 });
+    });
+    expect(latest().job).toBeNull();
+  });
+
+  it.each([
+    ["field_growing", "That field is still growing."],
+    ["no_field", "That field is gone."],
+    ["missing_tool", "You need a rake to harvest wheat."],
+  ] as const)("explains a %s refusal when harvesting", async (reason, message) => {
+    const api = fakeApi({
+      getState: vi.fn(async () => ({ ok: true as const, value: AT_FIELD })),
+      sendAction: vi.fn(async () => ({ ok: false as const, reason })),
+    });
+    await renderReady(api);
+    await act(async () => {
+      await latest().startHarvest(FIELD.id);
+    });
+    expect(screen.getByRole("alert")).toHaveTextContent(message);
+    expect(latest().job).toBeNull();
+  });
+
+  it("plants a seed: one seed fewer and a growing field on the map", async () => {
+    const withSeed: GameState = { ...AT_FIELD, inventory: { wheat_seeds: 1 } };
+    const planted = newField("heartland", 12, 15, Date.now() + FIELD_GROW_MS);
+    const afterPlanting: GameState = {
+      ...withSeed,
+      inventory: {},
+      fields: [FIELD, planted],
+    };
+    const api = fakeApi({
+      getState: vi.fn(async () => ({ ok: true as const, value: withSeed })),
+      sendAction: vi.fn(async () => ({ ok: true as const, value: afterPlanting })),
+    });
+    await renderReady(api);
+    expect(inventoryRows()).toEqual(["Wheat seeds 1/5"]);
+
+    await userEvent.click(screen.getByRole("button", { name: "Plant seed" }));
+
+    expect(api.sendAction).toHaveBeenCalledWith({ type: "field.plant", payload: {} });
+    expect(inventoryRows()).toEqual([]);
+    expect(latest().fields).toEqual([FIELD, planted]);
+    expect(screen.getByRole("button", { name: "Plant seed" })).toBeDisabled();
+  });
+
+  it.each([
+    ["cannot_plant_here", "You can't plant there. Face an empty grass tile."],
+    ["no_seeds", "You have no wheat seeds."],
+    ["out_of_bounds", "You can't go there."],
+  ] as const)("explains a %s refusal when planting", async (reason, message) => {
+    const withSeed: GameState = { ...AT_FIELD, inventory: { wheat_seeds: 1 } };
+    const api = fakeApi({
+      getState: vi.fn(async () => ({ ok: true as const, value: withSeed })),
+      sendAction: vi.fn(async () => ({ ok: false as const, reason })),
+    });
+    await renderReady(api);
+    await userEvent.click(screen.getByRole("button", { name: "Plant seed" }));
+    expect(screen.getByRole("alert")).toHaveTextContent(message);
+    expect(inventoryRows()).toEqual(["Wheat seeds 1/5"]);
   });
 });
 

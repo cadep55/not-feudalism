@@ -1,12 +1,8 @@
-import {
-  type Job,
-  NODE_IDS,
-  type NodeId,
-  RESOURCE_NODES,
-  type ResourceNode,
-  tileDistance,
-} from "@nf/shared";
+import { type Job, NODE_IDS, type NodeId, RESOURCE_NODES, tileDistance } from "@nf/shared";
 import type { RegionSize, Tile } from "./movement.ts";
+
+/** Something on one tile of a region that the character stands next to and works: a node or a field. */
+export type Spot = Tile & { region: string };
 
 /** Extra wait after a job's end before asking the server for the result, to allow for clock drift. */
 export const JOB_SETTLE_MS = 250;
@@ -31,7 +27,7 @@ export function nodeAt(tile: Tile, region: string): NodeId | null {
  * diagonals included): the server's rule for gathering. Standing on the node
  * itself doesn't count.
  */
-export function isNextTo(tile: Tile, node: ResourceNode): boolean {
+export function isNextTo(tile: Tile, node: Tile): boolean {
   return tileDistance(tile, node) === 1;
 }
 
@@ -41,11 +37,7 @@ export function isNextTo(tile: Tile, node: ResourceNode): boolean {
  * node), so standing on the node means stepping off it. Never the node's own
  * tile. Ties prefer the straighter approach. Null when no tile is free.
  */
-export function nearestAdjacentTile(
-  from: Tile,
-  node: ResourceNode,
-  region: RegionSize,
-): Tile | null {
+export function nearestAdjacentTile(from: Tile, node: Spot, region: RegionSize): Tile | null {
   if (isNextTo(from, node)) return from;
   let best: { tile: Tile; steps: number; straightLine: number } | null = null;
   for (let dy = -1; dy <= 1; dy++) {
@@ -77,11 +69,11 @@ export function jobProgress(job: Job, now: number): number {
 }
 
 /**
- * Whether taking a step ends this job. Walking away cancels a gather on the
- * server; a craft keeps going wherever the character goes.
+ * Whether taking a step ends this job. Walking away cancels a gather or a
+ * harvest on the server; a craft keeps going wherever the character goes.
  */
 export function walkingCancels(job: Job): boolean {
-  return job.kind === "gather";
+  return job.kind === "gather" || job.kind === "harvest";
 }
 
 /** Milliseconds to wait before re-reading state so the server has finished the job. */
@@ -90,8 +82,8 @@ export function refreshDelay(job: Job, now: number): number {
 }
 
 /**
- * Whether to ask the server to start gathering now: standing still next to the
- * node, and the server has acknowledged where we stand (nothing in flight, the
+ * Whether to ask the server to start gathering (or harvesting) now: standing
+ * still next to the node or field, and the server has acknowledged where we stand (nothing in flight, the
  * last position sent is the current one).
  */
 export function readyToGather(options: {
@@ -99,7 +91,8 @@ export function readyToGather(options: {
   lastSent: Tile;
   inFlight: boolean;
   stepping: boolean;
-  node: ResourceNode;
+  /** The node or field to work. */
+  node: Tile;
 }): boolean {
   const { position, lastSent } = options;
   return (
