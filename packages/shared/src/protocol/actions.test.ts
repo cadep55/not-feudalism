@@ -12,7 +12,19 @@ describe("ActionRequest", () => {
     });
   });
 
+  it("accepts building and removing", () => {
+    const build = { requestId, type: "building.build", payload: { kind: "house", x: 3, y: 4 } };
+    expect(ActionRequest.parse(build)).toEqual(build);
+    const remove = { requestId, type: "building.remove", payload: { buildingId: "house_1" } };
+    expect(ActionRequest.parse(remove)).toEqual(remove);
+  });
+
   it.each([
+    [
+      "unknown building",
+      { requestId, type: "building.build", payload: { kind: "castle", x: 1, y: 1 } },
+    ],
+    ["empty building id", { requestId, type: "building.remove", payload: { buildingId: "" } }],
     ["unknown action type", { requestId, type: "gold.grant", payload: { amount: 1000 } }],
     ["bad payload", { requestId, type: "move.to", payload: { x: -1, y: 2 } }],
     ["missing requestId", { type: "move.to", payload: { x: 1, y: 2 } }],

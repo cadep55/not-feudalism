@@ -1,5 +1,7 @@
 import { z } from "zod";
 import {
+  BuildingBuild,
+  BuildingRemove,
   CraftStart,
   FieldHarvest,
   FieldPlant,
@@ -37,6 +39,16 @@ export const ActionRequest = z.discriminatedUnion("type", [
     requestId: z.uuid(),
     type: z.literal("storehouse.take"),
     payload: StorehouseTransfer,
+  }),
+  z.strictObject({
+    requestId: z.uuid(),
+    type: z.literal("building.build"),
+    payload: BuildingBuild,
+  }),
+  z.strictObject({
+    requestId: z.uuid(),
+    type: z.literal("building.remove"),
+    payload: BuildingRemove,
   }),
 ]);
 export type ActionRequest = z.infer<typeof ActionRequest>;

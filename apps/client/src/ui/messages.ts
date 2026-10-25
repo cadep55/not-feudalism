@@ -1,4 +1,4 @@
-import { CARRY_LIMIT, type FailureReason, STOREHOUSE_LIMIT } from "@nf/shared";
+import { BUILDING_LIMITS, CARRY_LIMIT, type FailureReason, STOREHOUSE_LIMIT } from "@nf/shared";
 
 /** Player-facing text for every failure the server can report. */
 export const FAILURE_MESSAGES: Record<FailureReason | "network_error", string> = {
@@ -26,6 +26,12 @@ export const FAILURE_MESSAGES: Record<FailureReason | "network_error", string> =
   cannot_plant_here: "You can't plant there. Face an empty grass tile.",
   no_villager: "That villager isn't here.",
   no_rake_in_storehouse: "Put a rake in the storehouse first — each farming villager needs one.",
+  building_limit: `You can't build more of those (${BUILDING_LIMITS.house} houses, ${BUILDING_LIMITS.storehouse} storehouses max).`,
+  cannot_build_here: "You can't build there. It needs open grass with a clear tile on every side.",
+  no_building: "That building isn't there any more.",
+  last_building: "You can't remove your last house or storehouse.",
+  storehouse_not_empty: "Empty the storehouse before removing it.",
+  no_room_for_refund: "There's no room for the refund. Make space in your hands or the storehouse.",
   protocol_mismatch: "A new version of the game is out. Please refresh the page.",
   network_error: "Can't reach the server. Is it running?",
 };

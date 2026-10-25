@@ -1,5 +1,8 @@
 export {
+  BUILD_COSTS,
+  BUILD_DURATION_MS,
   BUILDING_KINDS,
+  BUILDING_LIMITS,
   BUILDING_SIZES,
   type Building,
   type BuildingKind,
@@ -7,6 +10,7 @@ export {
   covers,
   footprint,
   isBuildingKind,
+  REMOVE_DURATION_MS,
   STARTING_BUILDINGS,
   STARTING_HOUSE,
   STARTING_STOREHOUSE,
@@ -59,6 +63,7 @@ export {
   tileInFront,
 } from "./game/direction.ts";
 export type {
+  BuildJob,
   CharacterState,
   CraftJob,
   Field,
@@ -67,6 +72,7 @@ export type {
   HarvestJob,
   Inventory,
   Job,
+  RemoveJob,
   Villager,
   VillagerTask,
 } from "./game/state.ts";
@@ -74,6 +80,8 @@ export { ActionRequest, type GameAction, type GameActionType } from "./protocol/
 export { LoginRequest, SignUpRequest } from "./protocol/auth.ts";
 export { LIMITS } from "./protocol/limits.ts";
 export {
+  BuildingBuild,
+  BuildingRemove,
   ChatSend,
   CLIENT_MESSAGES,
   type ClientMessage,
@@ -92,6 +100,14 @@ export { FAILURE_REASONS, type FailureReason, isFailureReason } from "./protocol
 export { isCompatibleProtocol, PROTOCOL_VERSION } from "./protocol/version.ts";
 export { fail, ok, type RuleResult } from "./result.ts";
 export { type ActionFailure, applyAction, settleWorld } from "./rules/actions.ts";
+export {
+  type BuildFailure,
+  completeBuild,
+  placementBlocked,
+  type RemoveFailure,
+  startBuild,
+  startRemove,
+} from "./rules/build.ts";
 export {
   buildingAt,
   buildingById,

@@ -1,3 +1,4 @@
+import type { ItemId } from "./items.ts";
 import type { RegionId } from "./world.ts";
 
 // Buildings (owner decisions, 2026-10-24 and 2026-10-25; rules in docs/design/buildings.md).
@@ -27,6 +28,21 @@ export type Building = {
   width: number;
   height: number;
 };
+
+/** What each kind of building costs, paid from the character's inventory. */
+export const BUILD_COSTS: Record<BuildingKind, Partial<Record<ItemId, number>>> = {
+  house: { wood: 5 },
+  storehouse: { wood: 5, stone: 5 },
+};
+
+/** How long building takes. */
+export const BUILD_DURATION_MS = 10_000;
+
+/** How long removing a building takes. Removing refunds its full cost. */
+export const REMOVE_DURATION_MS = 5_000;
+
+/** Most of each kind a character may have, counting the starting ones. */
+export const BUILDING_LIMITS: Record<BuildingKind, number> = { house: 5, storehouse: 3 };
 
 /** Footprint size of each kind of building, in tiles. */
 export const BUILDING_SIZES: Record<BuildingKind, { width: number; height: number }> = {

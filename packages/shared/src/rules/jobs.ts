@@ -1,6 +1,7 @@
 import { RECIPES } from "../data/recipes.ts";
 import { GATHER_YIELD, RESOURCE_NODES } from "../data/resources.ts";
 import type { GameState } from "../game/state.ts";
+import { completeBuild } from "./build.ts";
 import { completeHarvest } from "./farming.ts";
 import { addItems } from "./inventory.ts";
 
@@ -31,5 +32,10 @@ export function resolveJob(state: GameState, now: number): GameState {
         job: null,
       };
     }
+    case "build":
+      return { ...completeBuild(state, job.building), job: null };
+    case "remove":
+      // The building came down when the job started; finishing just frees the character.
+      return { ...state, job: null };
   }
 }
