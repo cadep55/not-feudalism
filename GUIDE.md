@@ -61,7 +61,8 @@ Play alone in your own persistent world.
 - Basic map: walk around, come back where you left off
 - Prototype loop: one resource, one crafting recipe, one trade with an NPC merchant
 - Full single-player economy: several resources and recipes, NPC markets
-- Land ownership and buildings
+- Build your own houses (5 wood) and storehouses (5 wood + 5 stone) ([#40](https://github.com/cadep55/not-feudalism/issues/40))
+- Land ownership and more buildings
 - Basic combat against NPCs
 - Put it online so both owners (then friends) can play their own games
 
