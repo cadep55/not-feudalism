@@ -1,4 +1,11 @@
-import { BUILDINGS, type Building, covers, tileInFront } from "@nf/shared";
+import {
+  type Building,
+  covers,
+  STARTING_BUILDINGS,
+  STARTING_HOUSE,
+  STARTING_STOREHOUSE,
+  tileInFront,
+} from "@nf/shared";
 import { describe, expect, it } from "vitest";
 import {
   approachTile,
@@ -11,16 +18,17 @@ import {
 } from "./buildings.ts";
 
 const REGION = { width: 25, height: 18 };
-const STOREHOUSE = BUILDINGS.heartland_storehouse; // (15, 8), 2x2
+const STOREHOUSE = STARTING_STOREHOUSE; // (15, 8), 2x2
+const BUILDINGS = [...STARTING_BUILDINGS];
 
 function buildingOn(x: number, y: number): Building {
-  return { region: "heartland", kind: "storehouse", x, y, width: 2, height: 2 };
+  return { id: `at-${x},${y}`, region: "heartland", kind: "storehouse", x, y, width: 2, height: 2 };
 }
 
 describe("buildingsIn and buildingAt", () => {
   it("lists the region's buildings", () => {
-    expect(buildingsIn("heartland")).toEqual(["heartland_storehouse", "heartland_house"]);
-    expect(buildingsIn("nowhere")).toEqual([]);
+    expect(buildingsIn(BUILDINGS, "heartland")).toEqual(BUILDINGS);
+    expect(buildingsIn(BUILDINGS, "nowhere")).toEqual([]);
   });
 
   it("finds the building on any tile of its footprint", () => {
@@ -30,15 +38,15 @@ describe("buildingsIn and buildingAt", () => {
       { x: 15, y: 9 },
       { x: 16, y: 9 },
     ]) {
-      expect(buildingAt(tile, "heartland")).toBe("heartland_storehouse");
+      expect(buildingAt(BUILDINGS, tile, "heartland")).toBe(STOREHOUSE);
     }
-    expect(buildingAt({ x: 6, y: 13 }, "heartland")).toBe("heartland_house");
+    expect(buildingAt(BUILDINGS, { x: 6, y: 13 }, "heartland")).toBe(STARTING_HOUSE);
   });
 
   it("returns null next to a building, or in another region", () => {
-    expect(buildingAt({ x: 17, y: 8 }, "heartland")).toBeNull();
-    expect(buildingAt({ x: 14, y: 9 }, "heartland")).toBeNull();
-    expect(buildingAt({ x: 15, y: 8 }, "nowhere")).toBeNull();
+    expect(buildingAt(BUILDINGS, { x: 17, y: 8 }, "heartland")).toBeNull();
+    expect(buildingAt(BUILDINGS, { x: 14, y: 9 }, "heartland")).toBeNull();
+    expect(buildingAt(BUILDINGS, { x: 15, y: 8 }, "nowhere")).toBeNull();
   });
 });
 
@@ -111,23 +119,23 @@ describe("turnTowardBuilding", () => {
 
 describe("approachTile", () => {
   it("stays put when already beside the building", () => {
-    expect(approachTile({ x: 14, y: 8 }, STOREHOUSE, REGION)).toEqual({ x: 14, y: 8 });
-    expect(approachTile({ x: 17, y: 10 }, STOREHOUSE, REGION)).toEqual({ x: 17, y: 10 });
+    expect(approachTile({ x: 14, y: 8 }, STOREHOUSE, REGION, BUILDINGS)).toEqual({ x: 14, y: 8 });
+    expect(approachTile({ x: 17, y: 10 }, STOREHOUSE, REGION, BUILDINGS)).toEqual({ x: 17, y: 10 });
   });
 
   it("picks the closest side tile", () => {
-    expect(approachTile({ x: 10, y: 8 }, STOREHOUSE, REGION)).toEqual({ x: 14, y: 8 });
-    expect(approachTile({ x: 16, y: 2 }, STOREHOUSE, REGION)).toEqual({ x: 16, y: 7 });
-    expect(approachTile({ x: 22, y: 9 }, STOREHOUSE, REGION)).toEqual({ x: 17, y: 9 });
+    expect(approachTile({ x: 10, y: 8 }, STOREHOUSE, REGION, BUILDINGS)).toEqual({ x: 14, y: 8 });
+    expect(approachTile({ x: 16, y: 2 }, STOREHOUSE, REGION, BUILDINGS)).toEqual({ x: 16, y: 7 });
+    expect(approachTile({ x: 22, y: 9 }, STOREHOUSE, REGION, BUILDINGS)).toEqual({ x: 17, y: 9 });
   });
 
   it("prefers a side over a corner when both are equally far", () => {
     // (14, 7) the corner and (15, 7) the side are both 4 steps away.
-    expect(approachTile({ x: 11, y: 3 }, STOREHOUSE, REGION)).toEqual({ x: 15, y: 7 });
+    expect(approachTile({ x: 11, y: 3 }, STOREHOUSE, REGION, BUILDINGS)).toEqual({ x: 15, y: 7 });
   });
 
   it("steps out when standing inside the footprint", () => {
-    const tile = approachTile({ x: 15, y: 8 }, STOREHOUSE, REGION);
+    const tile = approachTile({ x: 15, y: 8 }, STOREHOUSE, REGION, BUILDINGS);
     expect(tile && isBeside(tile, STOREHOUSE)).toBe(true);
     expect(tile && covers(STOREHOUSE, tile)).toBe(false);
   });
@@ -135,7 +143,7 @@ describe("approachTile", () => {
   it("always picks a tile beside the footprint, never inside it", () => {
     for (let y = 0; y < REGION.height; y++) {
       for (let x = 0; x < REGION.width; x++) {
-        const tile = approachTile({ x, y }, STOREHOUSE, REGION);
+        const tile = approachTile({ x, y }, STOREHOUSE, REGION, BUILDINGS);
         expect(tile).not.toBeNull();
         if (!tile) continue;
         expect(isBeside(tile, STOREHOUSE)).toBe(true);
@@ -146,16 +154,24 @@ describe("approachTile", () => {
 
   it("never picks a tile off the map", () => {
     // (-1, 2) would be as close, but it's off the map.
-    expect(approachTile({ x: 0, y: 5 }, buildingOn(0, 0), REGION)).toEqual({ x: 0, y: 2 });
+    expect(approachTile({ x: 0, y: 5 }, buildingOn(0, 0), REGION, BUILDINGS)).toEqual({
+      x: 0,
+      y: 2,
+    });
   });
 
   it("never picks a tile with a node on it", () => {
     // The tree stands at (5, 5): just left of a building at (6, 5).
-    expect(approachTile({ x: 0, y: 5 }, buildingOn(6, 5), REGION)).toEqual({ x: 5, y: 6 });
+    expect(approachTile({ x: 0, y: 5 }, buildingOn(6, 5), REGION, BUILDINGS)).toEqual({
+      x: 5,
+      y: 6,
+    });
   });
 
   it("returns null when every tile around the building is off the map", () => {
-    expect(approachTile({ x: 3, y: 3 }, buildingOn(0, 0), { width: 2, height: 2 })).toBeNull();
+    expect(
+      approachTile({ x: 3, y: 3 }, buildingOn(0, 0), { width: 2, height: 2 }, BUILDINGS),
+    ).toBeNull();
   });
 });
 

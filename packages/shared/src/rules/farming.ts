@@ -1,4 +1,3 @@
-import { BUILDINGS, covers } from "../data/buildings.ts";
 import {
   FIELD_GROW_MS,
   FIELD_SEEDS,
@@ -11,6 +10,7 @@ import { isRegionId, REGIONS } from "../data/world.ts";
 import { directionBetween, tileInFront } from "../game/direction.ts";
 import type { Field, GameState } from "../game/state.ts";
 import { fail, ok, type RuleResult } from "../result.ts";
+import { buildingAt } from "./buildings.ts";
 import { addItems, removeItems } from "./inventory.ts";
 import { tileDistance } from "./move.ts";
 import { canCarry } from "./storehouse.ts";
@@ -123,7 +123,7 @@ export function plantingBlocked(
   const onNode = Object.values(RESOURCE_NODES).some(
     (n) => n.region === region && n.x === tile.x && n.y === tile.y,
   );
-  const onBuilding = Object.values(BUILDINGS).some((b) => b.region === region && covers(b, tile));
+  const onBuilding = buildingAt(state.buildings, region, tile) !== null;
   const onField = state.fields.some((f) => f.region === region && f.x === tile.x && f.y === tile.y);
   return onNode || onBuilding || onField ? "cannot_plant_here" : null;
 }

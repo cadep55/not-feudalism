@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { BUILDINGS } from "../data/buildings.ts";
+import { STARTING_BUILDINGS, STARTING_STOREHOUSE } from "../data/buildings.ts";
 import {
   FIELD_GROW_MS,
   FIELD_SEEDS,
@@ -43,6 +43,7 @@ function state(
     },
     inventory,
     storage: {},
+    buildings: [...STARTING_BUILDINGS],
     fields,
     villagers: [],
     job: null,
@@ -180,7 +181,7 @@ describe("planting", () => {
     });
 
     const tree = RESOURCE_NODES.heartland_tree;
-    const store = BUILDINGS.heartland_storehouse;
+    const store = STARTING_STOREHOUSE;
     for (const target of [tree, { x: store.x, y: store.y }, { x: FIELD.x, y: FIELD.y }]) {
       expect(plantingBlocked(state(OPEN, {}, [FIELD]), target)).toBe("cannot_plant_here");
     }

@@ -265,6 +265,7 @@ export function GameScreen({ api, player, onLogOut }: Props) {
                 job={load.state.job}
                 fields={load.state.fields}
                 villagers={load.state.villagers}
+                buildings={load.state.buildings}
                 sendPosition={sendPosition}
                 startGather={startGather}
                 startHarvest={startHarvest}

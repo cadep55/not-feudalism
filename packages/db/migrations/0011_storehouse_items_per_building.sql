@@ -1,0 +1,2 @@
+ALTER TABLE "storehouse_items" DROP CONSTRAINT "storehouse_items_character_id_item_id_pk";--> statement-breakpoint
+ALTER TABLE "storehouse_items" ADD CONSTRAINT "storehouse_items_character_id_building_id_item_id_pk" PRIMARY KEY("character_id","building_id","item_id");

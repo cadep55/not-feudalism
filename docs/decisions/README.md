@@ -6,6 +6,7 @@ One short file per hard-to-reverse decision (a library, a protocol, a data model
 |---|---|---|
 | [0001](0001-tech-stack.md) | Tech stack and multiplayer model | Proposed |
 | [0002](0002-single-player-first.md) | Single player first, with the server running the rules | Accepted |
+| [0003](0003-player-buildings.md) | Buildings and storehouse stock are per-player game state | Accepted |
 
 ## Template
 

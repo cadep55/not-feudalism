@@ -1,4 +1,4 @@
-import type { CharacterState, Direction, Field, Job, NodeId, Villager } from "@nf/shared";
+import type { Building, CharacterState, Direction, Field, Job, NodeId, Villager } from "@nf/shared";
 import { useEffect, useRef } from "react";
 import type { MoveOutcome, World } from "./createGame.ts";
 import type { Tile } from "./movement.ts";
@@ -9,8 +9,10 @@ type Props = {
   job: Job | null;
   /** The wheat fields; the world draws them and redraws when they change. */
   fields: Field[];
-  /** The house's villagers; the world draws them working or wandering. */
+  /** The villagers; the world draws them working or wandering. */
   villagers: Villager[];
+  /** The houses and storehouses; the world draws them and redraws when they change. */
+  buildings: Building[];
   sendPosition: (tile: Tile) => Promise<MoveOutcome>;
   startGather: (nodeId: NodeId) => void;
   /** Called once the character stands beside a field, facing it. */
@@ -30,6 +32,7 @@ export function GameCanvas({
   job,
   fields,
   villagers,
+  buildings,
   sendPosition,
   startGather,
   startHarvest,
@@ -54,6 +57,8 @@ export function GameCanvas({
   latestFields.current = fields;
   const latestVillagers = useRef(villagers);
   latestVillagers.current = villagers;
+  const latestBuildings = useRef(buildings);
+  latestBuildings.current = buildings;
   const initial = useRef(character);
   const world = useRef<World | null>(null);
 
@@ -66,6 +71,7 @@ export function GameCanvas({
         job: latestJob.current,
         fields: latestFields.current,
         villagers: latestVillagers.current,
+        buildings: latestBuildings.current,
         sendPosition: (tile) => send.current(tile),
         startGather: (nodeId) => gather.current(nodeId),
         startHarvest: (fieldId) => harvest.current(fieldId),
@@ -91,6 +97,10 @@ export function GameCanvas({
   useEffect(() => {
     world.current?.setVillagers(villagers);
   }, [villagers]);
+
+  useEffect(() => {
+    world.current?.setBuildings(buildings);
+  }, [buildings]);
 
   return <div ref={parent} className="canvas" data-testid="game-canvas" />;
 }

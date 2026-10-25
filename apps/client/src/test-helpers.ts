@@ -1,4 +1,4 @@
-import type { GameState } from "@nf/shared";
+import { type GameState, STARTING_BUILDINGS, STARTING_STOREHOUSE } from "@nf/shared";
 import { vi } from "vitest";
 import type { Api, Player } from "./net/api.ts";
 
@@ -15,7 +15,8 @@ export const ALICE_STATE: GameState = {
     facing: "s",
   },
   inventory: {},
-  storage: {},
+  buildings: [...STARTING_BUILDINGS],
+  storage: { [STARTING_STOREHOUSE.id]: {} },
   fields: [],
   villagers: [],
   job: null,

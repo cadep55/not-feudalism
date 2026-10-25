@@ -1,4 +1,5 @@
 import {
+  buildings,
   characters,
   type DbExecutor,
   fields,
@@ -8,16 +9,19 @@ import {
   villagers,
 } from "@nf/db";
 import {
+  type Building,
   DEFAULT_FACING,
   type Field,
   type GameState,
   type Inventory,
   ITEM_IDS,
+  isBuildingKind,
   isDirection,
   isItemId,
   isNodeId,
   isRecipeId,
   type Job,
+  type Villager,
   type VillagerTask,
 } from "@nf/shared";
 import { and, eq, isNull } from "drizzle-orm";
@@ -37,8 +41,14 @@ export async function loadStateForUpdate(db: DbExecutor, characterId: string): P
     .for("update");
   if (!row) throw new Error(`Character ${characterId} not found`);
 
-  const inventory = await loadItems(db, inventories, characterId);
-  const storage = await loadItems(db, storehouseItems, characterId);
+  const inventory = await loadInventory(db, characterId);
+  const buildingRows = await db
+    .select()
+    .from(buildings)
+    .where(eq(buildings.characterId, characterId))
+    .orderBy(buildings.createdAt, buildings.buildingId);
+  const world = buildingRows.flatMap((row) => toBuilding(row) ?? []);
+  const storage = await loadStorage(db, characterId, world);
   const fieldRows = await db.select().from(fields).where(eq(fields.characterId, characterId));
   const villagerRows = await db
     .select()
@@ -74,11 +84,13 @@ export async function loadStateForUpdate(db: DbExecutor, characterId: string): P
       facing: isDirection(row.facing) ? row.facing : DEFAULT_FACING,
     },
     inventory,
+    buildings: world,
     storage,
     fields: fieldRows.map(toField),
     villagers: villagerRows.map((row) => ({
       id: row.villagerId,
       name: row.name,
+      houseId: row.houseId,
       // Written only by saveState from validated VillagerTask objects.
       task: (row.task as VillagerTask | null) ?? null,
     })),
@@ -137,18 +149,80 @@ async function saveFields(
   }
 }
 
-/** The two item-count tables: what a character carries, and what its storehouse holds. */
-type ItemTable = typeof inventories | typeof storehouseItems;
+function toBuilding(row: typeof buildings.$inferSelect): Building | null {
+  if (!isBuildingKind(row.kind)) return null;
+  return {
+    id: row.buildingId,
+    region: row.region,
+    kind: row.kind,
+    x: row.x,
+    y: row.y,
+    width: row.width,
+    height: row.height,
+  };
+}
 
-async function loadItems(
+/** Inserts new buildings and deletes removed ones (buildings never move). */
+async function saveBuildings(
   db: DbExecutor,
-  table: ItemTable,
   characterId: string,
-): Promise<Inventory> {
+  before: Building[],
+  after: Building[],
+): Promise<void> {
+  const previous = new Set(before.map((b) => b.id));
+  const current = new Set(after.map((b) => b.id));
+  for (const building of after) {
+    if (previous.has(building.id)) continue;
+    await db.insert(buildings).values({
+      characterId,
+      buildingId: building.id,
+      kind: building.kind,
+      region: building.region,
+      x: building.x,
+      y: building.y,
+      width: building.width,
+      height: building.height,
+    });
+  }
+  for (const building of before) {
+    if (current.has(building.id)) continue;
+    await db
+      .delete(buildings)
+      .where(and(eq(buildings.characterId, characterId), eq(buildings.buildingId, building.id)));
+  }
+}
+
+async function loadInventory(db: DbExecutor, characterId: string): Promise<Inventory> {
   const rows = await db
-    .select({ itemId: table.itemId, quantity: table.quantity })
-    .from(table)
-    .where(eq(table.characterId, characterId));
+    .select({ itemId: inventories.itemId, quantity: inventories.quantity })
+    .from(inventories)
+    .where(eq(inventories.characterId, characterId));
+  return toItems(rows);
+}
+
+/** What each storehouse holds; every storehouse gets an entry, even when empty. */
+async function loadStorage(
+  db: DbExecutor,
+  characterId: string,
+  world: Building[],
+): Promise<GameState["storage"]> {
+  const rows = await db
+    .select({
+      buildingId: storehouseItems.buildingId,
+      itemId: storehouseItems.itemId,
+      quantity: storehouseItems.quantity,
+    })
+    .from(storehouseItems)
+    .where(eq(storehouseItems.characterId, characterId));
+  const storage: GameState["storage"] = {};
+  for (const building of world) {
+    if (building.kind !== "storehouse") continue;
+    storage[building.id] = toItems(rows.filter((r) => r.buildingId === building.id));
+  }
+  return storage;
+}
+
+function toItems(rows: { itemId: string; quantity: number }[]): Inventory {
   const items: Inventory = {};
   for (const { itemId, quantity } of rows) {
     if (isItemId(itemId)) items[itemId] = quantity;
@@ -156,10 +230,9 @@ async function loadItems(
   return items;
 }
 
-/** Writes changed counts; rows exist only while a count is above zero. */
-async function saveItems(
+/** Writes changed carried counts; rows exist only while a count is above zero. */
+async function saveInventory(
   db: DbExecutor,
-  table: ItemTable,
   characterId: string,
   before: Inventory,
   after: Inventory,
@@ -170,17 +243,94 @@ async function saveItems(
     if (quantity === (before[itemId] ?? 0)) continue;
     if (quantity > 0) {
       await db
-        .insert(table)
+        .insert(inventories)
         .values({ characterId, itemId, quantity })
         .onConflictDoUpdate({
-          target: [table.characterId, table.itemId],
+          target: [inventories.characterId, inventories.itemId],
           set: { quantity, updatedAt: now },
         });
     } else {
       await db
-        .delete(table)
-        .where(and(eq(table.characterId, characterId), eq(table.itemId, itemId)));
+        .delete(inventories)
+        .where(and(eq(inventories.characterId, characterId), eq(inventories.itemId, itemId)));
     }
+  }
+}
+
+/** Writes changed stored counts, storehouse by storehouse; rows exist only above zero. */
+async function saveStorage(
+  db: DbExecutor,
+  characterId: string,
+  before: GameState["storage"],
+  after: GameState["storage"],
+  now: Date,
+): Promise<void> {
+  const ids = new Set([...Object.keys(before), ...Object.keys(after)]);
+  for (const buildingId of ids) {
+    const was = before[buildingId] ?? {};
+    const is = after[buildingId] ?? {};
+    for (const itemId of ITEM_IDS) {
+      const quantity = is[itemId] ?? 0;
+      if (quantity === (was[itemId] ?? 0)) continue;
+      if (quantity > 0) {
+        await db
+          .insert(storehouseItems)
+          .values({ characterId, buildingId, itemId, quantity })
+          .onConflictDoUpdate({
+            target: [
+              storehouseItems.characterId,
+              storehouseItems.buildingId,
+              storehouseItems.itemId,
+            ],
+            set: { quantity, updatedAt: now },
+          });
+      } else {
+        await db
+          .delete(storehouseItems)
+          .where(
+            and(
+              eq(storehouseItems.characterId, characterId),
+              eq(storehouseItems.buildingId, buildingId),
+              eq(storehouseItems.itemId, itemId),
+            ),
+          );
+      }
+    }
+  }
+}
+
+/** Inserts new villagers, saves changed tasks, and deletes villagers who left. */
+async function saveVillagers(
+  db: DbExecutor,
+  characterId: string,
+  before: Villager[],
+  after: Villager[],
+  now: Date,
+): Promise<void> {
+  const current = new Set(after.map((v) => v.id));
+  for (const villager of after) {
+    const old = before.find((v) => v.id === villager.id);
+    if (!old) {
+      await db.insert(villagers).values({
+        characterId,
+        villagerId: villager.id,
+        name: villager.name,
+        houseId: villager.houseId,
+        task: villager.task,
+      });
+      continue;
+    }
+    if (JSON.stringify(old.task) === JSON.stringify(villager.task)) continue;
+    await db
+      .update(villagers)
+      .set({ task: villager.task, updatedAt: now })
+      .where(and(eq(villagers.characterId, characterId), eq(villagers.villagerId, villager.id)));
+  }
+  for (const villager of before) {
+    if (current.has(villager.id)) continue;
+    await db
+      .delete(villagers)
+      .where(and(eq(villagers.characterId, characterId), eq(villagers.villagerId, villager.id)));
   }
 }
 
@@ -239,17 +389,12 @@ export async function saveState(
       .where(eq(characters.id, characterId));
   }
 
-  await saveItems(db, inventories, characterId, before.inventory, after.inventory, now);
-  await saveItems(db, storehouseItems, characterId, before.storage, after.storage, now);
+  await saveInventory(db, characterId, before.inventory, after.inventory, now);
+  // Buildings first, so a new storehouse exists before anything is stored in it.
+  await saveBuildings(db, characterId, before.buildings, after.buildings);
+  await saveStorage(db, characterId, before.storage, after.storage, now);
   await saveFields(db, characterId, before.fields, after.fields, now);
-  for (const villager of after.villagers) {
-    const old = before.villagers.find((v) => v.id === villager.id);
-    if (old && JSON.stringify(old.task) === JSON.stringify(villager.task)) continue;
-    await db
-      .update(villagers)
-      .set({ task: villager.task, updatedAt: now })
-      .where(and(eq(villagers.characterId, characterId), eq(villagers.villagerId, villager.id)));
-  }
+  await saveVillagers(db, characterId, before.villagers, after.villagers, now);
 
   const jobChanged = JSON.stringify(before.job) !== JSON.stringify(after.job);
   if (jobChanged && before.job) {

@@ -144,20 +144,47 @@ export const jobs = pgTable(
   ],
 );
 
-/** What each character's storehouse holds (Phase 1: one storehouse per character's world). */
+/**
+ * The buildings in each character's world (docs/design/buildings.md). Players
+ * build and remove them. Characters made before this table existed get the
+ * starting buildings the first time their state loads.
+ */
+export const buildings = pgTable(
+  "buildings",
+  {
+    characterId: uuid("character_id")
+      .notNull()
+      .references(() => characters.id, { onDelete: "cascade" }),
+    buildingId: text("building_id").notNull(),
+    // "house" or "storehouse" (BUILDING_KINDS in packages/shared/src/data/buildings.ts).
+    kind: text("kind").notNull(),
+    region: text("region").notNull(),
+    x: integer("x").notNull(),
+    y: integer("y").notNull(),
+    width: integer("width").notNull(),
+    height: integer("height").notNull(),
+    ...timestamps,
+  },
+  (table) => [primaryKey({ columns: [table.characterId, table.buildingId] })],
+);
+
+/** What each storehouse holds. Each storehouse keeps its own stock. */
 export const storehouseItems = pgTable(
   "storehouse_items",
   {
     characterId: uuid("character_id")
       .notNull()
       .references(() => characters.id, { onDelete: "cascade" }),
+    // Which storehouse. The default is the starting storehouse, which held
+    // everything stored before players could build more.
+    buildingId: text("building_id").notNull().default("heartland_storehouse"),
     // Item IDs come from packages/shared/src/data/items.ts.
     itemId: text("item_id").notNull(),
     quantity: integer("quantity").notNull(),
     ...timestamps,
   },
   (table) => [
-    primaryKey({ columns: [table.characterId, table.itemId] }),
+    primaryKey({ columns: [table.characterId, table.buildingId, table.itemId] }),
     check("storehouse_items_quantity_positive", sql`${table.quantity} > 0`),
   ],
 );
@@ -188,7 +215,7 @@ export const fields = pgTable(
   ],
 );
 
-/** The villagers living in each character's house (docs/design/villagers.md). */
+/** The villagers living in each character's houses (docs/design/villagers.md). */
 export const villagers = pgTable(
   "villagers",
   {
@@ -197,6 +224,9 @@ export const villagers = pgTable(
       .references(() => characters.id, { onDelete: "cascade" }),
     villagerId: text("villager_id").notNull(),
     name: text("name").notNull(),
+    // The house it lives in. The default is the starting house, home to every
+    // villager before players could build more.
+    houseId: text("house_id").notNull().default("heartland_house"),
     // What it's doing ({ kind, nodeId | fieldId, since, delivered }), or null while idle.
     task: jsonb("task"),
     ...timestamps,

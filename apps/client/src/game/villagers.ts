@@ -1,13 +1,13 @@
 import {
-  BUILDINGS,
+  type Building,
   deliveriesBy,
   type GameState,
-  houseDoor,
   RESOURCE_NODES,
   taskTarget,
   taskTimeline,
   type VillagerJob,
   type VillagerTask,
+  villagerRoute,
   WANDER_RADIUS,
 } from "@nf/shared";
 import { buildingAt } from "./buildings.ts";
@@ -66,9 +66,10 @@ export function nextVillagerRefresh(state: GameState, now: number): number | nul
     const task = villager.task;
     if (!task) continue;
     const target = taskTarget(state, task);
-    if (!target) continue;
-    const t = taskTimeline(task, target);
-    const next = deliveriesBy(task, target, now) + 1;
+    const route = villagerRoute(state.buildings, villager);
+    if (!target || !route) continue;
+    const t = taskTimeline(task, target, route);
+    const next = deliveriesBy(task, target, route, now) + 1;
     const dueAt = t.since + t.outbound + next * t.cycle - t.leg;
     if (soonest === null || dueAt < soonest) soonest = dueAt;
   }
@@ -77,23 +78,30 @@ export function nextVillagerRefresh(state: GameState, now: number): number | nul
 }
 
 /** Whether an idle villager may stand on a tile: on the map, not a building or a resource node. */
-export function canWanderTo(tile: Tile, region: RegionSize, regionId: string): boolean {
+export function canWanderTo(
+  tile: Tile,
+  region: RegionSize,
+  regionId: string,
+  buildings: readonly Building[],
+): boolean {
   const onMap = tile.x >= 0 && tile.y >= 0 && tile.x < region.width && tile.y < region.height;
-  return onMap && !buildingAt(tile, regionId) && !nodeAt(tile, regionId);
+  return onMap && !buildingAt(buildings, tile, regionId) && !nodeAt(tile, regionId);
 }
+
+/** Where an idle villager wanders: around its house's door, steering clear of buildings. */
+export type Home = { door: Tile; region: string; buildings: readonly Building[] };
 
 /**
  * A random free tile within WANDER_RADIUS of the house door for an idle
  * villager to stroll to. `rng` returns numbers in [0, 1) like Math.random.
  */
-export function pickWanderTile(rng: () => number, region: RegionSize): Tile {
-  const regionId = BUILDINGS.heartland_house.region;
-  const door = houseDoor();
+export function pickWanderTile(rng: () => number, region: RegionSize, home: Home): Tile {
+  const { door } = home;
   const choices: Tile[] = [];
   for (let dy = -WANDER_RADIUS; dy <= WANDER_RADIUS; dy++) {
     for (let dx = -WANDER_RADIUS; dx <= WANDER_RADIUS; dx++) {
       const tile = { x: door.x + dx, y: door.y + dy };
-      if (canWanderTo(tile, region, regionId)) choices.push(tile);
+      if (canWanderTo(tile, region, home.region, home.buildings)) choices.push(tile);
     }
   }
   const index = Math.min(Math.floor(rng() * choices.length), choices.length - 1);
@@ -109,8 +117,9 @@ export function planStroll(
   now: number,
   rng: () => number,
   region: RegionSize,
+  home: Home,
 ): Stroll {
-  const to = pickWanderTile(rng, region);
+  const to = pickWanderTile(rng, region, home);
   const distance = Math.max(Math.abs(to.x - from.x), Math.abs(to.y - from.y));
   const arriveAt = now + (distance * 1000) / WANDER_TILES_PER_SECOND;
   const pause = WANDER_PAUSE_MIN_MS + rng() * (WANDER_PAUSE_MAX_MS - WANDER_PAUSE_MIN_MS);

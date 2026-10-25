@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { STARTING_BUILDINGS } from "../data/buildings.ts";
 import { GATHER_DURATION_MS, RESOURCE_NODES } from "../data/resources.ts";
 import type { GameState } from "../game/state.ts";
 import { applyAction } from "./actions.ts";
@@ -21,6 +22,7 @@ const state: GameState = {
   },
   inventory: {},
   storage: {},
+  buildings: [...STARTING_BUILDINGS],
   fields: [],
   villagers: [],
   job: null,
