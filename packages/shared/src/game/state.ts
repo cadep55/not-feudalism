@@ -68,6 +68,21 @@ export type Field = {
   readyAt: number;
 };
 
+/**
+ * What a working villager is doing, and since when. Its whole work timeline
+ * follows from this (docs/design/villagers.md); nothing ticks.
+ */
+export type VillagerTask =
+  | { kind: "gather"; nodeId: NodeId; since: number; delivered: number }
+  | { kind: "harvest"; fieldId: string; since: number; delivered: number };
+
+export type Villager = {
+  id: string;
+  name: string;
+  /** null while idle (wandering near the house). */
+  task: VillagerTask | null;
+};
+
 export type GameState = {
   character: CharacterState;
   /** What the character carries (at most CARRY_LIMIT of each). */
@@ -76,6 +91,8 @@ export type GameState = {
   storage: Inventory;
   /** Wheat fields in the character's world. */
   fields: Field[];
+  /** The villagers living in the character's house. */
+  villagers: Villager[];
   /** The character's job in progress, or null when idle. */
   job: Job | null;
 };

@@ -31,6 +31,7 @@ function state(
     inventory,
     storage,
     fields: [],
+    villagers: [],
     job: null,
   };
 }

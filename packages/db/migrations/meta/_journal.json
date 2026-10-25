@@ -57,6 +57,20 @@
       "when": 1792894287770,
       "tag": "0007_starting_fields",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1792894979955,
+      "tag": "0008_villagers",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1792894980753,
+      "tag": "0009_starting_villagers",
+      "breakpoints": true
     }
   ]
 }

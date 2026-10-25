@@ -73,27 +73,40 @@ export function startHarvest(
 }
 
 /**
- * The result of one finished harvest: one wheat (plus a seed every SEED_EVERY
- * harvests). A field whose wheat runs out disappears.
+ * Takes one harvest from a field: one wheat, plus a seed every SEED_EVERY
+ * harvests. A field whose wheat runs out disappears. Returns null when the
+ * field is already gone. Shared by players and farming villagers.
  */
-export function completeHarvest(state: GameState, id: string): GameState {
-  const field = state.fields.find((f) => f.id === id);
-  // The field may already be gone (e.g. emptied); the harvest then yields nothing.
-  if (!field || field.wheat <= 0) return state;
-  const dropsSeed = nextHarvestDropsSeed(field);
-  let inventory = addItems(state.inventory, "wheat", 1);
-  if (dropsSeed) inventory = addItems(inventory, "wheat_seeds", 1);
+export function harvestOnce(
+  fields: Field[],
+  id: string,
+): { fields: Field[]; seed: boolean } | null {
+  const field = fields.find((f) => f.id === id);
+  if (!field || field.wheat <= 0) return null;
+  const seed = nextHarvestDropsSeed(field);
   const harvested: Field = {
     ...field,
     wheat: field.wheat - 1,
-    seeds: dropsSeed ? field.seeds - 1 : field.seeds,
+    seeds: seed ? field.seeds - 1 : field.seeds,
     harvests: field.harvests + 1,
   };
-  const fields =
-    harvested.wheat > 0
-      ? state.fields.map((f) => (f.id === id ? harvested : f))
-      : state.fields.filter((f) => f.id !== id);
-  return { ...state, inventory, fields };
+  return {
+    seed,
+    fields:
+      harvested.wheat > 0
+        ? fields.map((f) => (f.id === id ? harvested : f))
+        : fields.filter((f) => f.id !== id),
+  };
+}
+
+/** The result of the player's finished harvest, added to what they carry. */
+export function completeHarvest(state: GameState, id: string): GameState {
+  // The field may already be gone (e.g. emptied); the harvest then yields nothing.
+  const taken = harvestOnce(state.fields, id);
+  if (!taken) return state;
+  let inventory = addItems(state.inventory, "wheat", 1);
+  if (taken.seed) inventory = addItems(inventory, "wheat_seeds", 1);
+  return { ...state, inventory, fields: taken.fields };
 }
 
 /** Why a tile can't be planted, or null when it's free grass. */

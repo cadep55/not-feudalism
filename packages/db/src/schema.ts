@@ -187,3 +187,19 @@ export const fields = pgTable(
     check("fields_seeds_not_negative", sql`${table.seeds} >= 0`),
   ],
 );
+
+/** The villagers living in each character's house (docs/design/villagers.md). */
+export const villagers = pgTable(
+  "villagers",
+  {
+    characterId: uuid("character_id")
+      .notNull()
+      .references(() => characters.id, { onDelete: "cascade" }),
+    villagerId: text("villager_id").notNull(),
+    name: text("name").notNull(),
+    // What it's doing ({ kind, nodeId | fieldId, since, delivered }), or null while idle.
+    task: jsonb("task"),
+    ...timestamps,
+  },
+  (table) => [primaryKey({ columns: [table.characterId, table.villagerId] })],
+);

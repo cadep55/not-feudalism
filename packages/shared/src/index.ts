@@ -29,6 +29,16 @@ export {
   type ResourceNode,
 } from "./data/resources.ts";
 export {
+  VILLAGER_GATHER_MS,
+  VILLAGER_JOBS,
+  VILLAGER_LOAD,
+  VILLAGER_NAMES,
+  VILLAGER_WALK_TILES_PER_SECOND,
+  VILLAGERS_PER_HOUSE,
+  type VillagerJob,
+  WANDER_RADIUS,
+} from "./data/villagers.ts";
+export {
   isRegionId,
   REGIONS,
   type RegionId,
@@ -53,6 +63,8 @@ export type {
   HarvestJob,
   Inventory,
   Job,
+  Villager,
+  VillagerTask,
 } from "./game/state.ts";
 export { ActionRequest, type GameAction, type GameActionType } from "./protocol/actions.ts";
 export { LoginRequest, SignUpRequest } from "./protocol/auth.ts";
@@ -70,15 +82,17 @@ export {
   parseClientMessage,
   StorehouseTransfer,
   Turn,
+  VillagerAssign,
 } from "./protocol/messages.ts";
 export { FAILURE_REASONS, type FailureReason, isFailureReason } from "./protocol/reasons.ts";
 export { isCompatibleProtocol, PROTOCOL_VERSION } from "./protocol/version.ts";
 export { fail, ok, type RuleResult } from "./result.ts";
-export { type ActionFailure, applyAction } from "./rules/actions.ts";
+export { type ActionFailure, applyAction, settleWorld } from "./rules/actions.ts";
 export { startCraft } from "./rules/craft.ts";
 export {
   completeHarvest,
   fieldId,
+  harvestOnce,
   newField,
   nextHarvestDropsSeed,
   plantingBlocked,
@@ -96,3 +110,15 @@ export {
   storeItems,
   takeItems,
 } from "./rules/storehouse.ts";
+export {
+  assignVillager,
+  deliveriesBy,
+  dropOffSpot,
+  houseDoor,
+  pickVillagerNames,
+  settleVillagers,
+  taskTarget,
+  taskTimeline,
+  villagerActivity,
+  workSpot,
+} from "./rules/villagers.ts";

@@ -7,6 +7,7 @@ import { startGather } from "./gather.ts";
 import { resolveJob } from "./jobs.ts";
 import { moveTo } from "./move.ts";
 import { type StorehouseFailure, storeItems, takeItems } from "./storehouse.ts";
+import { assignVillager, settleVillagers } from "./villagers.ts";
 
 /** Every reason a game rule may refuse an action. */
 export type ActionFailure =
@@ -21,7 +22,9 @@ export type ActionFailure =
   | "no_field"
   | "field_growing"
   | "no_seeds"
-  | "cannot_plant_here";
+  | "cannot_plant_here"
+  | "no_villager"
+  | "no_rake_in_storehouse";
 
 /**
  * Applies one action to a game state. Pure: the server loads the state, calls
@@ -34,7 +37,7 @@ export function applyAction(
   action: GameAction,
   now: number,
 ): RuleResult<GameState, ActionFailure> {
-  const current = resolveJob(state, now);
+  const current = settleWorld(state, now);
   switch (action.type) {
     case "move.to": {
       const moved = moveTo(current.character, action.payload, now);
@@ -60,6 +63,8 @@ export function applyAction(
       return startHarvest(current, action.payload.fieldId, now);
     case "field.plant":
       return plantSeed(current, now);
+    case "villager.assign":
+      return assignVillager(current, action.payload.villagerId, action.payload.job, now);
     case "craft.start":
       return startCraft(current, action.payload.recipeId, now);
     case "storehouse.store":
@@ -72,4 +77,12 @@ export function applyAction(
 /** Gathering and harvesting need the character to stay put, facing their target. */
 function isTiedToSpot(state: GameState): boolean {
   return state.job?.kind === "gather" || state.job?.kind === "harvest";
+}
+
+/**
+ * Brings a state up to `now`: finishes the character's job if it's due and
+ * hands in villager deliveries. Done before every action and when state is read.
+ */
+export function settleWorld(state: GameState, now: number): GameState {
+  return settleVillagers(resolveJob(state, now), now);
 }

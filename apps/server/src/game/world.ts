@@ -1,8 +1,17 @@
-import { type DbExecutor, fields } from "@nf/db";
-import { newField, STARTING_FIELDS } from "@nf/shared";
+import { type DbExecutor, fields, villagers } from "@nf/db";
+import { newField, pickVillagerNames, STARTING_FIELDS } from "@nf/shared";
 
 /** Gives a new character the world it starts with (Phase 1: each character has its own). */
 export async function createStartingWorld(db: DbExecutor, characterId: string): Promise<void> {
+  // The house's villagers, idle, with names picked from the character's id.
+  await db.insert(villagers).values(
+    pickVillagerNames(characterId).map((name, i) => ({
+      characterId,
+      villagerId: `v${i + 1}`,
+      name,
+      task: null,
+    })),
+  );
   if (STARTING_FIELDS.length === 0) return;
   await db.insert(fields).values(
     STARTING_FIELDS.map(({ region, x, y }) => {

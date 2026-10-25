@@ -5,7 +5,7 @@ import {
   applyAction,
   type GameState,
   type RuleResult,
-  resolveJob,
+  settleWorld,
 } from "@nf/shared";
 import { and, eq } from "drizzle-orm";
 import { loadStateForUpdate, saveState } from "./state-store.ts";
@@ -13,14 +13,14 @@ import { loadStateForUpdate, saveState } from "./state-store.ts";
 export type ActionResult = RuleResult<GameState, ActionFailure>;
 
 /**
- * The character's current state. Finished jobs are resolved and saved first
- * (lazy resolution), so a gather that completed while the player was away
- * shows up in their inventory.
+ * The character's current state. Finished jobs and villager deliveries are
+ * settled and saved first (lazy resolution), so work done while the player was
+ * away shows up.
  */
 export async function readState(db: Db, characterId: string, now: Date): Promise<GameState> {
   return db.transaction(async (tx) => {
     const before = await loadStateForUpdate(tx, characterId);
-    const after = resolveJob(before, now.getTime());
+    const after = settleWorld(before, now.getTime());
     if (after !== before) await saveState(tx, before, after, now);
     return after;
   });
@@ -65,8 +65,8 @@ export async function performAction(
       if (result.ok) {
         await saveState(tx, before, result.value, now);
       } else {
-        // A refused action still collects a gather that finished in the meantime.
-        const resolved = resolveJob(before, now.getTime());
+        // A refused action still collects finished jobs and villager deliveries.
+        const resolved = settleWorld(before, now.getTime());
         if (resolved !== before) await saveState(tx, before, resolved, now);
       }
       await tx.insert(gameActions).values({

@@ -7,6 +7,9 @@ import {
   type Job,
   type NodeId,
   newField,
+  RESOURCE_NODES,
+  taskTimeline,
+  type Villager,
 } from "@nf/shared";
 import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -23,6 +26,7 @@ const canvas = vi.hoisted(() => ({
     character: CharacterState;
     job: Job | null;
     fields: Field[];
+    villagers: Villager[];
     sendPosition: (t: Tile) => Promise<MoveOutcome>;
     startGather: (nodeId: NodeId) => void | Promise<void>;
     startHarvest: (fieldId: string) => void | Promise<void>;
@@ -582,5 +586,140 @@ describe("GameScreen storehouse", () => {
     expect(panel).not.toHaveClass("highlighted");
     act(() => props.openStorehouse());
     expect(panel).toHaveClass("highlighted");
+  });
+});
+
+describe("GameScreen villagers", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  function latest() {
+    const props = canvas.props;
+    if (!props) throw new Error("GameCanvas was not rendered");
+    return props;
+  }
+
+  const IDLE: GameState = {
+    ...ALICE_STATE,
+    storage: { rake: 1 },
+    villagers: [
+      { id: "v1", name: "Aldric", task: null },
+      { id: "v2", name: "Maud", task: null },
+    ],
+  };
+
+  function working(since: number): GameState {
+    return {
+      ...IDLE,
+      villagers: [
+        { id: "v1", name: "Aldric", task: null },
+        {
+          id: "v2",
+          name: "Maud",
+          task: { kind: "gather", nodeId: "heartland_tree", since, delivered: 0 },
+        },
+      ],
+    };
+  }
+
+  it("lists the villagers and hands them to the game", async () => {
+    const api = fakeApi({ getState: vi.fn(async () => ({ ok: true as const, value: IDLE })) });
+    await renderReady(api);
+    expect(latest().villagers).toEqual(IDLE.villagers);
+    const panel = screen.getByRole("region", { name: "Villagers" });
+    expect(
+      within(panel)
+        .getAllByRole("listitem")
+        .map((row) => row.textContent),
+    ).toEqual([expect.stringContaining("Aldric"), expect.stringContaining("Maud")]);
+  });
+
+  it("sends villager.assign and shows the new job", async () => {
+    const assigned = working(Date.now());
+    const api = fakeApi({
+      getState: vi.fn(async () => ({ ok: true as const, value: IDLE })),
+      sendAction: vi.fn(async () => ({ ok: true as const, value: assigned })),
+    });
+    await renderReady(api);
+
+    await userEvent.selectOptions(
+      screen.getByRole("combobox", { name: "Job for Maud" }),
+      "Gather wood",
+    );
+
+    expect(api.sendAction).toHaveBeenCalledWith({
+      type: "villager.assign",
+      payload: { villagerId: "v2", job: "wood" },
+    });
+    expect(screen.getByRole("combobox", { name: "Job for Maud" })).toHaveValue("wood");
+    expect(screen.getByRole("region", { name: "Villagers" })).toHaveTextContent(
+      "Maud Gathering wood",
+    );
+    expect(latest().villagers).toEqual(assigned.villagers);
+  });
+
+  it.each([
+    [
+      "no_rake_in_storehouse",
+      "Put a rake in the storehouse first — each farming villager needs one.",
+    ],
+    ["no_field", "That field is gone."],
+    ["no_villager", "That villager isn't here."],
+  ] as const)("explains a %s refusal", async (reason, message) => {
+    const api = fakeApi({
+      getState: vi.fn(async () => ({ ok: true as const, value: IDLE })),
+      sendAction: vi.fn(async () => ({ ok: false as const, reason })),
+    });
+    await renderReady(api);
+    await userEvent.selectOptions(
+      screen.getByRole("combobox", { name: "Job for Aldric" }),
+      "Harvest wheat",
+    );
+    expect(screen.getByRole("alert")).toHaveTextContent(message);
+    expect(screen.getByRole("combobox", { name: "Job for Aldric" })).toHaveValue("idle");
+  });
+
+  it("re-reads state when a working villager's delivery is due, so the storehouse fills", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    const since = Date.now();
+    const started = working(since);
+    const t = taskTimeline(
+      { kind: "gather", nodeId: "heartland_tree", since, delivered: 0 },
+      RESOURCE_NODES.heartland_tree,
+    );
+    const firstAt = t.outbound + t.cycle - t.leg;
+    const delivered: GameState = {
+      ...started,
+      storage: { rake: 1, wood: 5 },
+      villagers: started.villagers.map((v) =>
+        v.task ? { ...v, task: { ...v.task, delivered: 1 } } : v,
+      ),
+    };
+    const api = fakeApi({ getState: vi.fn(async () => ({ ok: true as const, value: started })) });
+    await renderReady(api);
+    expect(api.getState).toHaveBeenCalledTimes(1);
+    vi.mocked(api.getState).mockResolvedValue({ ok: true, value: delivered });
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(firstAt + JOB_SETTLE_MS - 2_000);
+    });
+    expect(api.getState).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2_500);
+    });
+    expect(api.getState).toHaveBeenCalledTimes(2);
+    expect(screen.getByRole("region", { name: "Storehouse" })).toHaveTextContent("Wood");
+  });
+
+  it("doesn't poll while every villager is idle", async () => {
+    const api = fakeApi({ getState: vi.fn(async () => ({ ok: true as const, value: IDLE })) });
+    await renderReady(api);
+    vi.useFakeTimers();
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(5 * 60_000);
+    });
+    expect(api.getState).toHaveBeenCalledTimes(1);
   });
 });

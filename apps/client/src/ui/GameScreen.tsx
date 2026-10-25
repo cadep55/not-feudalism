@@ -1,15 +1,17 @@
-import type { Direction, GameState, ItemId, NodeId, RecipeId } from "@nf/shared";
+import type { Direction, GameState, ItemId, NodeId, RecipeId, VillagerJob } from "@nf/shared";
 import { useCallback, useEffect, useState } from "react";
 import type { MoveOutcome } from "../game/createGame.ts";
 import { GameCanvas } from "../game/GameCanvas.tsx";
 import { refreshDelay } from "../game/gathering.ts";
 import type { Tile } from "../game/movement.ts";
+import { nextVillagerRefresh } from "../game/villagers.ts";
 import type { Api, Player } from "../net/api.ts";
 import { CraftingPanel } from "./CraftingPanel.tsx";
 import { FarmingPanel } from "./FarmingPanel.tsx";
 import { InventoryPanel } from "./InventoryPanel.tsx";
 import { FAILURE_MESSAGES } from "./messages.ts";
 import { StorehousePanel } from "./StorehousePanel.tsx";
+import { VillagersPanel } from "./VillagersPanel.tsx";
 
 /** How long a refusal message stays on screen. */
 export const NOTICE_MS = 2_500;
@@ -58,6 +60,26 @@ export function GameScreen({ api, player, onLogOut }: Props) {
       clearTimeout(timer);
     };
   }, [api, job, showState]);
+
+  // Villager deliveries reach the storehouse when the server settles (on any read or action).
+  // While any villager works, re-read state just after its next delivery is due; never when all
+  // are idle. Every new state (including this re-read) reschedules from the timeline.
+  const ready = load.status === "ready" ? load.state : null;
+  useEffect(() => {
+    if (!ready) return;
+    const delay = nextVillagerRefresh(ready, Date.now());
+    if (delay === null) return;
+    let cancelled = false;
+    const timer = setTimeout(() => {
+      api.getState().then((result) => {
+        if (!cancelled && result.ok) showState(result.value);
+      });
+    }, delay);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [api, ready, showState]);
 
   useEffect(() => {
     if (!notice) return;
@@ -177,6 +199,22 @@ export function GameScreen({ api, player, onLogOut }: Props) {
     (item: ItemId, quantity: number) => transfer("storehouse.take", item, quantity),
     [transfer],
   );
+  // Assigning is instant: the reply carries the villager's task (and the storehouse, for rakes).
+  const assignVillager = useCallback(
+    async (villagerId: string, job: VillagerJob) => {
+      const result = await api.sendAction({
+        type: "villager.assign",
+        payload: { villagerId, job },
+      });
+      if (result.ok) {
+        showState(result.value);
+        setNotice(null);
+      } else {
+        setNotice(FAILURE_MESSAGES[result.reason]);
+      }
+    },
+    [api, showState],
+  );
   const openStorehouse = useCallback(() => setStorehouseHighlighted(true), []);
 
   return (
@@ -202,6 +240,7 @@ export function GameScreen({ api, player, onLogOut }: Props) {
               character={load.state.character}
               job={load.state.job}
               fields={load.state.fields}
+              villagers={load.state.villagers}
               sendPosition={sendPosition}
               startGather={startGather}
               startHarvest={startHarvest}
@@ -222,6 +261,7 @@ export function GameScreen({ api, player, onLogOut }: Props) {
                 onStore={store}
                 onTake={take}
               />
+              <VillagersPanel villagers={load.state.villagers} onAssign={assignVillager} />
             </div>
           </div>
           {notice && (
