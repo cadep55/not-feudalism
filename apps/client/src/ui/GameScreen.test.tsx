@@ -587,12 +587,25 @@ describe("GameScreen storehouse", () => {
     act(() => props.openStorehouse());
     expect(panel).toHaveClass("highlighted");
   });
+
+  it("reopens the storehouse panel if it was closed when the character arrives", async () => {
+    const { props } = await renderReady();
+    await userEvent.click(screen.getByRole("button", { name: "Storehouse" }));
+    expect(screen.queryByRole("region", { name: "Storehouse" })).not.toBeInTheDocument();
+    act(() => props.openStorehouse());
+    expect(screen.getByRole("region", { name: "Storehouse" })).toHaveClass("highlighted");
+  });
 });
 
 describe("GameScreen villagers", () => {
   afterEach(() => {
     vi.useRealTimers();
   });
+
+  /** The villagers sit in a dropdown over the map; open it as a player would. */
+  async function openVillagers() {
+    await userEvent.click(screen.getByRole("button", { name: /Villagers/ }));
+  }
 
   function latest() {
     const props = canvas.props;
@@ -626,6 +639,7 @@ describe("GameScreen villagers", () => {
   it("lists the villagers and hands them to the game", async () => {
     const api = fakeApi({ getState: vi.fn(async () => ({ ok: true as const, value: IDLE })) });
     await renderReady(api);
+    await openVillagers();
     expect(latest().villagers).toEqual(IDLE.villagers);
     const panel = screen.getByRole("region", { name: "Villagers" });
     expect(
@@ -642,6 +656,7 @@ describe("GameScreen villagers", () => {
       sendAction: vi.fn(async () => ({ ok: true as const, value: assigned })),
     });
     await renderReady(api);
+    await openVillagers();
 
     await userEvent.selectOptions(
       screen.getByRole("combobox", { name: "Job for Maud" }),
@@ -672,6 +687,7 @@ describe("GameScreen villagers", () => {
       sendAction: vi.fn(async () => ({ ok: false as const, reason })),
     });
     await renderReady(api);
+    await openVillagers();
     await userEvent.selectOptions(
       screen.getByRole("combobox", { name: "Job for Aldric" }),
       "Harvest wheat",
@@ -698,6 +714,7 @@ describe("GameScreen villagers", () => {
     };
     const api = fakeApi({ getState: vi.fn(async () => ({ ok: true as const, value: started })) });
     await renderReady(api);
+    await openVillagers();
     expect(api.getState).toHaveBeenCalledTimes(1);
     vi.mocked(api.getState).mockResolvedValue({ ok: true, value: delivered });
 
@@ -716,6 +733,7 @@ describe("GameScreen villagers", () => {
   it("doesn't poll while every villager is idle", async () => {
     const api = fakeApi({ getState: vi.fn(async () => ({ ok: true as const, value: IDLE })) });
     await renderReady(api);
+    await openVillagers();
     vi.useFakeTimers();
     await act(async () => {
       await vi.advanceTimersByTimeAsync(5 * 60_000);

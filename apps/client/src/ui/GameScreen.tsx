@@ -10,8 +10,17 @@ import { CraftingPanel } from "./CraftingPanel.tsx";
 import { FarmingPanel } from "./FarmingPanel.tsx";
 import { InventoryPanel } from "./InventoryPanel.tsx";
 import { FAILURE_MESSAGES } from "./messages.ts";
+import { PanelBar } from "./PanelBar.tsx";
+import {
+  browserStorage,
+  ensureOpen,
+  loadOpenPanels,
+  type PanelId,
+  saveOpenPanels,
+  togglePanel,
+} from "./panels.ts";
 import { StorehousePanel } from "./StorehousePanel.tsx";
-import { VillagersPanel } from "./VillagersPanel.tsx";
+import { VillagersMenu } from "./VillagersMenu.tsx";
 
 /** How long a refusal message stays on screen. */
 export const NOTICE_MS = 2_500;
@@ -28,6 +37,9 @@ export function GameScreen({ api, player, onLogOut }: Props) {
   const [load, setLoad] = useState<Load>({ status: "loading" });
   const [notice, setNotice] = useState<string | null>(null);
   const [storehouseHighlighted, setStorehouseHighlighted] = useState(false);
+  const [openPanels, setOpenPanels] = useState<PanelId[]>(() => loadOpenPanels(browserStorage()));
+  useEffect(() => saveOpenPanels(browserStorage(), openPanels), [openPanels]);
+  const toggle = useCallback((id: PanelId) => setOpenPanels((open) => togglePanel(open, id)), []);
   const showState = useCallback((state: GameState) => setLoad({ status: "ready", state }), []);
 
   useEffect(() => {
@@ -215,7 +227,11 @@ export function GameScreen({ api, player, onLogOut }: Props) {
     },
     [api, showState],
   );
-  const openStorehouse = useCallback(() => setStorehouseHighlighted(true), []);
+  // Walking up to the storehouse opens its panel (if closed) and highlights it.
+  const openStorehouse = useCallback(() => {
+    setOpenPanels((open) => ensureOpen(open, "storehouse"));
+    setStorehouseHighlighted(true);
+  }, []);
 
   return (
     <div className="game">
@@ -235,33 +251,20 @@ export function GameScreen({ api, player, onLogOut }: Props) {
       )}
       {load.status === "ready" && (
         <>
-          <div className="play">
-            <GameCanvas
-              character={load.state.character}
-              job={load.state.job}
-              fields={load.state.fields}
-              villagers={load.state.villagers}
-              sendPosition={sendPosition}
-              startGather={startGather}
-              startHarvest={startHarvest}
-              turn={turn}
-              openStorehouse={openStorehouse}
-            />
-            <div className="side">
-              <InventoryPanel inventory={load.state.inventory} job={load.state.job} />
-              <FarmingPanel inventory={load.state.inventory} job={load.state.job} onPlant={plant} />
-              <CraftingPanel
-                inventory={load.state.inventory}
+          <div className="map-area">
+            <div className="map">
+              <GameCanvas
+                character={load.state.character}
                 job={load.state.job}
-                onCraft={startCraft}
+                fields={load.state.fields}
+                villagers={load.state.villagers}
+                sendPosition={sendPosition}
+                startGather={startGather}
+                startHarvest={startHarvest}
+                turn={turn}
+                openStorehouse={openStorehouse}
               />
-              <StorehousePanel
-                state={load.state}
-                highlighted={storehouseHighlighted}
-                onStore={store}
-                onTake={take}
-              />
-              <VillagersPanel villagers={load.state.villagers} onAssign={assignVillager} />
+              <VillagersMenu villagers={load.state.villagers} onAssign={assignVillager} />
             </div>
           </div>
           {notice && (
@@ -273,6 +276,35 @@ export function GameScreen({ api, player, onLogOut }: Props) {
             Click a tile to walk there, or use the arrow keys / WASD. Click a tree or rock to
             gather, a wheat field to harvest it, or the storehouse to store and take items.
           </p>
+          <PanelBar
+            open={openPanels}
+            onToggle={toggle}
+            panels={{
+              inventory: <InventoryPanel inventory={load.state.inventory} job={load.state.job} />,
+              crafting: (
+                <CraftingPanel
+                  inventory={load.state.inventory}
+                  job={load.state.job}
+                  onCraft={startCraft}
+                />
+              ),
+              farming: (
+                <FarmingPanel
+                  inventory={load.state.inventory}
+                  job={load.state.job}
+                  onPlant={plant}
+                />
+              ),
+              storehouse: (
+                <StorehousePanel
+                  state={load.state}
+                  highlighted={storehouseHighlighted}
+                  onStore={store}
+                  onTake={take}
+                />
+              ),
+            }}
+          />
         </>
       )}
     </div>
