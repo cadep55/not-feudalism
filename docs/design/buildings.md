@@ -36,7 +36,8 @@ Farming takes a rake from the nearest storehouse to the field that has one, and 
 
 **Removing:** a `building.remove` action is checked and paid up front: the building goes out of use, the refund is paid, and villagers are sorted out at once. The 5-second job is the time it takes, and shows where it stood. Villagers who delivered to a removed storehouse start their trip over with the nearest one left, and any villager whose path changed because tiles were freed starts over too.
 
+**In the game:** the **Build** tab lists each building with its cost against what you carry and how many you have out of the limit. **Build** enters placement mode: a 2x2 outline follows the pointer, green where it fits and red where it doesn't (the same check the server makes). Click to place, or press Esc or Cancel. A building going up or coming down shows see-through. The tab also lists your buildings, each with a **Remove** button (disabled for the last house and storehouse).
+
 ## Not yet
 
-- The Build tab, placement and the Remove button arrive in the next PR of #40
 - Buildings don't block walking yet; pathfinding is #33

@@ -1,11 +1,12 @@
 /** The panels in the bottom bar, left to right. (The storehouse opens over the map instead.) */
-export const PANEL_IDS = ["inventory", "crafting", "farming"] as const;
+export const PANEL_IDS = ["inventory", "crafting", "farming", "build"] as const;
 export type PanelId = (typeof PANEL_IDS)[number];
 
 export const PANEL_LABELS: Record<PanelId, string> = {
   inventory: "Inventory",
   crafting: "Crafting",
   farming: "Farming",
+  build: "Build",
 };
 
 const STORAGE_KEY = "nf.openPanels";

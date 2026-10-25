@@ -1,5 +1,7 @@
 import {
+  BUILDING_SIZES,
   type Building,
+  type BuildingKind,
   type CharacterState,
   type Direction,
   type Field,
@@ -7,6 +9,7 @@ import {
   isRegionId,
   type Job,
   type NodeId,
+  placementBlocked,
   REGIONS,
   RESOURCE_NODES,
   type ResourceNode,
@@ -59,6 +62,12 @@ const VILLAGER_BOB_PX = 3;
 const VILLAGER_BOB_MS = 400;
 /** The facing arrow is a hint, not a feature: keep it faint. */
 const ARROW_ALPHA = 0.45;
+/** The placement preview: green where a building fits, red where it doesn't. */
+const GHOST_OK = 0x7cc04a;
+const GHOST_BLOCKED = 0xc0392b;
+const GHOST_ALPHA = 0.45;
+/** A building going up or coming down is drawn see-through. */
+const WORKING_ALPHA = 0.45;
 
 /**
  * What the server said about a position update: the facing it recorded (null
@@ -87,6 +96,8 @@ export type WorldOptions = {
   turn: (facing: Direction) => Promise<boolean>;
   /** The character stands beside the storehouse facing it: show the storehouse panel. */
   openStorehouse: () => void;
+  /** The player placed a building (top-left tile) while in placement mode. */
+  build: (kind: BuildingKind, x: number, y: number) => void;
 };
 
 /** What the React side holds on to: tell the world about job and field changes, tear it down. */
@@ -95,6 +106,8 @@ export type World = {
   setFields: (fields: Field[]) => void;
   setVillagers: (villagers: Villager[]) => void;
   setBuildings: (buildings: Building[]) => void;
+  /** Enters placement mode for a kind of building, or leaves it (null). */
+  setPlacing: (kind: BuildingKind | null) => void;
   destroy: () => void;
 };
 
@@ -145,6 +158,10 @@ class WorldScene extends Phaser.Scene {
   /** What the building layer last drew; redrawn when this changes. */
   private drawnBuildings: string | null = null;
   private buildingLayer: Phaser.GameObjects.Container | null = null;
+  /** The kind of building being placed, if any, and the tile under the pointer. */
+  private placing: BuildingKind | null = null;
+  private hovered: Tile | null = null;
+  private ghost!: Phaser.GameObjects.Graphics;
   private villagerLayer: Phaser.GameObjects.Container | null = null;
   private readonly villagerSprites = new Map<string, VillagerSprite>();
   private avatar!: Phaser.GameObjects.Container;
@@ -172,6 +189,11 @@ class WorldScene extends Phaser.Scene {
   /** The server's latest word on the buildings. Safe to call before the scene starts. */
   setBuildings(buildings: Building[]) {
     this.buildings = buildings;
+  }
+
+  /** Enters or leaves placement mode. Safe to call before the scene starts. */
+  setPlacing(kind: BuildingKind | null) {
+    this.placing = kind;
   }
 
   /** The server's latest word on the character's job. Safe to call before the scene starts. */
@@ -253,9 +275,19 @@ class WorldScene extends Phaser.Scene {
       .setOrigin(0.5, 0)
       .setVisible(false);
 
+    // The placement preview sits above the buildings and characters.
+    this.ghost = this.add.graphics();
+    this.input.on("pointermove", (pointer: Phaser.Input.Pointer) => {
+      this.hovered = tileAt(pointer.worldX, pointer.worldY, TILE, this.region);
+    });
+
     this.input.on("pointerdown", (pointer: Phaser.Input.Pointer) => {
       const tile = tileAt(pointer.worldX, pointer.worldY, TILE, this.region);
       if (!tile) return;
+      if (this.placing) {
+        this.place(this.placing, tile);
+        return;
+      }
       const { region } = this.options.character;
       const nodeId = nodeAt(tile, region);
       const field = fieldAt(this.fields, tile, region);
@@ -341,6 +373,7 @@ class WorldScene extends Phaser.Scene {
     }
 
     this.drawProgress();
+    this.drawGhost();
     this.drawBuildings();
     this.drawFields();
     this.drawVillagers();
@@ -477,21 +510,64 @@ class WorldScene extends Phaser.Scene {
     return this.fieldById(task.fieldId);
   }
 
+  /** Why a building can't go here, or null when it can (the same check the server makes). */
+  private blockedAt(kind: BuildingKind, tile: Tile) {
+    const world = {
+      character: { region: this.options.character.region, ...this.position },
+      buildings: this.buildings,
+      fields: this.fields,
+    };
+    return placementBlocked(world, kind, tile.x, tile.y);
+  }
+
+  /** Places the building with its top-left on the tile if it fits, or says why not. */
+  private place(kind: BuildingKind, tile: Tile) {
+    if (this.blockedAt(kind, tile)) {
+      this.showToast("You can't build there: it needs open grass with a clear tile on every side.");
+      return;
+    }
+    this.options.build(kind, tile.x, tile.y);
+  }
+
+  /** The footprint under the pointer while placing: green where it fits, red where it doesn't. */
+  private drawGhost() {
+    const g = this.ghost;
+    g.clear();
+    if (!this.placing || !this.hovered) return;
+    const { width, height } = BUILDING_SIZES[this.placing];
+    const color = this.blockedAt(this.placing, this.hovered) ? GHOST_BLOCKED : GHOST_OK;
+    g.fillStyle(color, GHOST_ALPHA);
+    g.fillRect(this.hovered.x * TILE, this.hovered.y * TILE, width * TILE, height * TILE);
+    g.lineStyle(2, color, 1);
+    g.strokeRect(this.hovered.x * TILE, this.hovered.y * TILE, width * TILE, height * TILE);
+  }
+
   /**
-   * Draws the buildings: a labelled square each until we have pixel art. Cheap
-   * to call every frame: it only redraws when the buildings changed.
+   * Draws the buildings: a labelled square each until we have pixel art, plus
+   * a see-through one going up or coming down. Cheap to call every frame: it
+   * only redraws when the buildings or the job changed.
    */
   private drawBuildings() {
     const layer = this.buildingLayer;
     if (!layer) return;
-    const shown = buildingsIn(this.buildings, this.options.character.region);
-    const key = shown.map((b) => `${b.id}:${b.kind}@${b.x},${b.y}`).join("|");
+    const { region } = this.options.character;
+    const shown = buildingsIn(this.buildings, region);
+    const working = this.job?.kind === "build" || this.job?.kind === "remove" ? this.job : null;
+    const site = working?.building.region === region ? working.building : null;
+    const key = [...shown, ...(site ? [site] : [])]
+      .map((b) => `${b.id}:${b.kind}@${b.x},${b.y}`)
+      .join("|");
     if (key === this.drawnBuildings) return;
     this.drawnBuildings = key;
     layer.removeAll(true);
     const g = this.add.graphics();
     layer.add(g);
     for (const building of shown) layer.add(this.drawBuilding(g, building));
+    if (site) {
+      const faded = this.add.graphics().setAlpha(WORKING_ALPHA);
+      layer.add(faded);
+      layer.add(this.drawBuilding(faded, site).setAlpha(WORKING_ALPHA));
+    }
   }
 
   /** Where a villager's house is, for idle wandering; null when its house is gone or elsewhere. */
@@ -660,6 +736,10 @@ class WorldScene extends Phaser.Scene {
     this.position = tile;
     this.lastSent = tile;
     this.avatar.setPosition(...this.pixelsOf(tile));
+    this.showToast(message);
+  }
+
+  private showToast(message: string) {
     this.toast.setText(message).setVisible(true);
     this.time.delayedCall(2500, () => this.toast.setVisible(false));
   }
@@ -748,6 +828,7 @@ export function createGame(parent: HTMLElement, options: WorldOptions): World {
     setFields: (fields) => scene.setFields(fields),
     setVillagers: (villagers) => scene.setVillagers(villagers),
     setBuildings: (buildings) => scene.setBuildings(buildings),
+    setPlacing: (kind) => scene.setPlacing(kind),
     destroy: () => {
       resizes.disconnect();
       game.destroy(true);

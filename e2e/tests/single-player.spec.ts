@@ -236,3 +236,52 @@ test("a villager sent for wood fills the storehouse", async ({ page }) => {
     );
   });
 });
+
+/** Open grass with room for a 2x2 building and the clear tile around it. */
+const OPEN_SPOT = { x: 20, y: 13 };
+
+async function serverBuildings(
+  page: Page,
+): Promise<{ id: string; kind: string; x: number; y: number }[]> {
+  const res = await page.request.get(`${serverURL}/game/state`);
+  const { state } = (await res.json()) as {
+    state: { buildings: { id: string; kind: string; x: number; y: number }[] };
+  };
+  return state.buildings;
+}
+
+test("a player builds a house from 5 wood, then removes it for a refund", async ({ page }) => {
+  test.setTimeout(90_000);
+  await test.step("sign up", () => signUp(page));
+  const inventory = page.getByRole("region", { name: "Inventory" });
+  const build = page.getByRole("region", { name: "Build" });
+
+  await test.step("gather 5 wood", async () => {
+    for (let n = 1; n <= 5; n++) {
+      await clickTile(page, TREE);
+      await expect(inventory.getByRole("listitem")).toHaveText([`Wood ${n}/5`], {
+        timeout: 15_000,
+      });
+    }
+  });
+
+  await test.step("Build House, then click open grass to place it", async () => {
+    await build.getByRole("button", { name: "Build House" }).click();
+    await expect(build.getByRole("status")).toContainText("Click the map to place the house");
+    await clickTile(page, OPEN_SPOT);
+    await expect(build.getByText("Building a house…")).toBeVisible();
+    await expect(inventory.getByRole("listitem")).toHaveCount(0);
+  });
+
+  await test.step("10 seconds later the house stands, and it's saved", async () => {
+    const remove = build.getByRole("button", { name: "Remove House at 20,13" });
+    await expect(remove).toBeVisible({ timeout: 15_000 });
+    expect((await serverBuildings(page)).filter((b) => b.kind === "house")).toHaveLength(2);
+  });
+
+  await test.step("remove it: the 5 wood come back", async () => {
+    await build.getByRole("button", { name: "Remove House at 20,13" }).click();
+    await expect(inventory.getByRole("listitem")).toHaveText(["Wood 5/5"]);
+    expect((await serverBuildings(page)).filter((b) => b.kind === "house")).toHaveLength(1);
+  });
+});

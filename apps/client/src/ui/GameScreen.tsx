@@ -1,5 +1,6 @@
 import {
   atStorehouse,
+  type BuildingKind,
   type Direction,
   type GameState,
   type ItemId,
@@ -16,6 +17,7 @@ import { refreshDelay } from "../game/gathering.ts";
 import type { Tile } from "../game/movement.ts";
 import { nextVillagerRefresh } from "../game/villagers.ts";
 import type { Api, Player } from "../net/api.ts";
+import { BuildPanel } from "./BuildPanel.tsx";
 import { CraftingPanel } from "./CraftingPanel.tsx";
 import { FarmingPanel } from "./FarmingPanel.tsx";
 import { InventoryPanel } from "./InventoryPanel.tsx";
@@ -46,6 +48,7 @@ export function GameScreen({ api, player, onLogOut }: Props) {
   const [load, setLoad] = useState<Load>({ status: "loading" });
   const [notice, setNotice] = useState<string | null>(null);
   const [storehouseOpen, setStorehouseOpen] = useState(false);
+  const [placing, setPlacing] = useState<BuildingKind | null>(null);
   const [openPanels, setOpenPanels] = useState<PanelId[]>(() => loadOpenPanels(browserStorage()));
   useEffect(() => saveOpenPanels(browserStorage(), openPanels), [openPanels]);
   const toggle = useCallback((id: PanelId) => setOpenPanels((open) => togglePanel(open, id)), []);
@@ -240,6 +243,45 @@ export function GameScreen({ api, player, onLogOut }: Props) {
   // Walking up to the storehouse (and facing it) opens it over the map.
   const openStorehouse = useCallback(() => setStorehouseOpen(true), []);
 
+  // Placement mode ends with a placed building, the Cancel button, or Esc.
+  useEffect(() => {
+    if (!placing) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setPlacing(null);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [placing]);
+
+  // The materials leave the inventory as soon as the server accepts; the building appears when the job ends.
+  const build = useCallback(
+    async (kind: BuildingKind, x: number, y: number) => {
+      setPlacing(null);
+      const result = await api.sendAction({ type: "building.build", payload: { kind, x, y } });
+      if (result.ok) {
+        showState(result.value);
+        setNotice(null);
+      } else {
+        setNotice(FAILURE_MESSAGES[result.reason]);
+      }
+    },
+    [api, showState],
+  );
+
+  // Removing pays the refund straight away; the building is gone once the server accepts.
+  const remove = useCallback(
+    async (buildingId: string) => {
+      const result = await api.sendAction({ type: "building.remove", payload: { buildingId } });
+      if (result.ok) {
+        showState(result.value);
+        setNotice(null);
+      } else {
+        setNotice(FAILURE_MESSAGES[result.reason]);
+      }
+    },
+    [api, showState],
+  );
+
   return (
     <div className="game">
       <header>
@@ -271,6 +313,8 @@ export function GameScreen({ api, player, onLogOut }: Props) {
                 startHarvest={startHarvest}
                 turn={turn}
                 openStorehouse={openStorehouse}
+                placing={placing}
+                build={build}
               />
               <VillagersMenu villagers={load.state.villagers} onAssign={assignVillager} />
               {storehouseOpen && (
@@ -309,6 +353,16 @@ export function GameScreen({ api, player, onLogOut }: Props) {
                   inventory={load.state.inventory}
                   job={load.state.job}
                   onPlant={plant}
+                />
+              ),
+              build: (
+                <BuildPanel
+                  inventory={load.state.inventory}
+                  buildings={load.state.buildings}
+                  job={load.state.job}
+                  placing={placing}
+                  onPlace={setPlacing}
+                  onRemove={remove}
                 />
               ),
             }}
