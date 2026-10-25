@@ -5,7 +5,7 @@ type Props = {
   job: Job | null;
 };
 
-/** What the character carries (out of the carry limit), plus what it's busy gathering (crafting shows in the CraftingPanel). */
+/** What the character carries (out of the carry limit), plus what it's busy gathering or harvesting (crafting shows in the CraftingPanel). */
 export function InventoryPanel({ inventory, job }: Props) {
   const held = ITEM_IDS.flatMap((id) => {
     const count = inventory[id] ?? 0;
@@ -32,6 +32,11 @@ export function InventoryPanel({ inventory, job }: Props) {
       {job?.kind === "gather" && (
         <p className="working" role="status">
           Gathering {ITEMS[RESOURCE_NODES[job.nodeId].yields].name.toLowerCase()}…
+        </p>
+      )}
+      {job?.kind === "harvest" && (
+        <p className="working" role="status">
+          Harvesting wheat…
         </p>
       )}
     </section>

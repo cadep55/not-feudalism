@@ -8,6 +8,14 @@ export {
   footprint,
   STOREHOUSE_LIMIT,
 } from "./data/buildings.ts";
+export {
+  FIELD_GROW_MS,
+  FIELD_SEEDS,
+  FIELD_WHEAT,
+  HARVEST_DURATION_MS,
+  SEED_EVERY,
+  STARTING_FIELDS,
+} from "./data/farming.ts";
 export { ITEM_IDS, ITEMS, type ItemId, isItemId } from "./data/items.ts";
 export { MOVE_SLACK_TILES, WALK_SPEED_TILES_PER_SECOND } from "./data/movement.ts";
 export { isRecipeId, RECIPE_IDS, RECIPES, type Recipe, type RecipeId } from "./data/recipes.ts";
@@ -39,8 +47,10 @@ export {
 export type {
   CharacterState,
   CraftJob,
+  Field,
   GameState,
   GatherJob,
+  HarvestJob,
   Inventory,
   Job,
 } from "./game/state.ts";
@@ -53,6 +63,8 @@ export {
   type ClientMessage,
   type ClientMessageType,
   CraftStart,
+  FieldHarvest,
+  FieldPlant,
   GatherStart,
   MoveTo,
   parseClientMessage,
@@ -64,6 +76,15 @@ export { isCompatibleProtocol, PROTOCOL_VERSION } from "./protocol/version.ts";
 export { fail, ok, type RuleResult } from "./result.ts";
 export { type ActionFailure, applyAction } from "./rules/actions.ts";
 export { startCraft } from "./rules/craft.ts";
+export {
+  completeHarvest,
+  fieldId,
+  newField,
+  nextHarvestDropsSeed,
+  plantingBlocked,
+  plantSeed,
+  startHarvest,
+} from "./rules/farming.ts";
 export { startGather } from "./rules/gather.ts";
 export { addItems, hasItems, removeItems } from "./rules/inventory.ts";
 export { resolveJob } from "./rules/jobs.ts";

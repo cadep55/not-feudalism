@@ -215,6 +215,24 @@ button:disabled {
   cursor: not-allowed;
 }
 
+.farming .seeds {
+  margin: 0 0 0.4rem;
+}
+
+.farming button {
+  padding: 0.3rem 0.75rem;
+}
+
+.farming button:disabled {
+  cursor: not-allowed;
+}
+
+.farming .hint-small {
+  margin: 0.4rem 0 0;
+  font-size: 0.85rem;
+  font-style: italic;
+}
+
 .inventory li.full .count {
   color: var(--error);
 }

@@ -89,7 +89,7 @@ Each bullet is about one PR with its tests.
 - [x] Facing: 8 directions with a faint arrow; gathering requires facing the node (#28)
 - [x] Storehouse, house and carrying limits: 5 of each carried, 100 of each stored (#29)
 - [ ] Buildings block movement; walk around them (#33)
-- [ ] Farming: fields hold 50 wheat + 5 seeds, plant seeds to grow new fields (#30)
+- [x] Farming: fields hold 50 wheat + 5 seeds, plant seeds to grow new fields (#30)
 - [ ] Villagers: 3 per house, wander, gather at 1/3 speed when assigned (#31)
 - [ ] Trade with an NPC merchant: prices as data, gold and items conserved in one transaction (#21)
 - [ ] Land plots and buildings (per-character in Phase 1)

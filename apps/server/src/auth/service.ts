@@ -9,6 +9,7 @@ import {
   STARTING_REGION,
 } from "@nf/shared";
 import { eq, sql } from "drizzle-orm";
+import { createStartingWorld } from "../game/world.ts";
 import { hashPassword, verifyAgainstDummy, verifyPassword } from "./password.ts";
 import { createSession, type SessionPlayer } from "./sessions.ts";
 
@@ -53,6 +54,7 @@ export async function signUp(
           })
           .returning({ id: characters.id, name: characters.name });
         if (!character) throw new Error("character insert returned no row");
+        await createStartingWorld(tx, character.id);
 
         const session = await createSession(tx, account.id, now);
         return {

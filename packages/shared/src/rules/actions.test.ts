@@ -21,6 +21,7 @@ const state: GameState = {
   },
   inventory: {},
   storage: {},
+  fields: [],
   job: null,
 };
 

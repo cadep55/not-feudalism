@@ -1,6 +1,7 @@
 import { RECIPES } from "../data/recipes.ts";
 import { GATHER_YIELD, RESOURCE_NODES } from "../data/resources.ts";
 import type { GameState } from "../game/state.ts";
+import { completeHarvest } from "./farming.ts";
 import { addItems } from "./inventory.ts";
 
 /**
@@ -20,6 +21,8 @@ export function resolveJob(state: GameState, now: number): GameState {
         job: null,
       };
     }
+    case "harvest":
+      return { ...completeHarvest(state, job.fieldId), job: null };
     case "craft": {
       const { output } = RECIPES[job.recipeId];
       return {

@@ -30,6 +30,7 @@ function state(
     },
     inventory,
     storage,
+    fields: [],
     job: null,
   };
 }

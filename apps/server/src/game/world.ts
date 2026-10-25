@@ -1,0 +1,24 @@
+import { type DbExecutor, fields } from "@nf/db";
+import { newField, STARTING_FIELDS } from "@nf/shared";
+
+/** Gives a new character the world it starts with (Phase 1: each character has its own). */
+export async function createStartingWorld(db: DbExecutor, characterId: string): Promise<void> {
+  if (STARTING_FIELDS.length === 0) return;
+  await db.insert(fields).values(
+    STARTING_FIELDS.map(({ region, x, y }) => {
+      // Already grown: ready since the epoch.
+      const field = newField(region, x, y, 0);
+      return {
+        characterId,
+        fieldId: field.id,
+        region,
+        x,
+        y,
+        wheat: field.wheat,
+        seeds: field.seeds,
+        harvests: field.harvests,
+        readyAt: new Date(field.readyAt),
+      };
+    }),
+  );
+}

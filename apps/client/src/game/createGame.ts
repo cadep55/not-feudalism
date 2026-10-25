@@ -4,6 +4,7 @@ import {
   type BuildingId,
   type CharacterState,
   type Direction,
+  type Field,
   isRegionId,
   type Job,
   type NodeId,
@@ -20,6 +21,7 @@ import {
   turnTowardBuilding,
 } from "./buildings.ts";
 import { arrowPlacement, facingAfterStep, turnBeforeGather } from "./facing.ts";
+import { fieldAt, fieldLabel, fieldsIn, isGrowing } from "./fields.ts";
 import {
   jobProgress,
   nearestAdjacentTile,
@@ -56,23 +58,31 @@ export type WorldOptions = {
   character: CharacterState;
   /** The job in progress when the game starts; later changes arrive through World.setJob. */
   job: Job | null;
+  /** The wheat fields when the game starts; later changes arrive through World.setFields. */
+  fields: Field[];
   sendPosition: (tile: Tile) => Promise<MoveOutcome>;
   /** Asks the server to start gathering; the result comes back as a setJob call. */
   startGather: (nodeId: NodeId) => void;
+  /** Asks the server to start harvesting a field; the result comes back as setJob/setFields calls. */
+  startHarvest: (fieldId: string) => void;
   /** Asks the server to turn the character in place; resolves true once it accepts. */
   turn: (facing: Direction) => Promise<boolean>;
   /** The character stands beside the storehouse facing it: show the storehouse panel. */
   openStorehouse: () => void;
 };
 
-/** What the React side holds on to: tell the world about job changes, tear it down. */
+/** What the React side holds on to: tell the world about job and field changes, tear it down. */
 export type World = {
   setJob: (job: Job | null) => void;
+  setFields: (fields: Field[]) => void;
   destroy: () => void;
 };
 
-/** Something the character walks up to and then uses: a resource node or a building. */
-type Target = { kind: "node"; id: NodeId } | { kind: "building"; id: BuildingId };
+/** Something the character walks up to and then uses: a resource node, a wheat field or a building. */
+type Target =
+  | { kind: "node"; id: NodeId }
+  | { kind: "field"; id: string }
+  | { kind: "building"; id: BuildingId };
 
 type MovementKeys = Record<"up" | "down" | "left" | "right", Phaser.Input.Keyboard.Key[]>;
 
@@ -81,8 +91,9 @@ type MovementKeys = Record<"up" | "down" | "left" | "right", Phaser.Input.Keyboa
  * server's speed (click a tile, or hold arrows/WASD) and reports positions to
  * the server, snapping back if it refuses. The character faces the way it last
  * stepped, shown by a faint arrow. Clicking a resource node walks next to it,
- * turns toward it if needed, then asks the server to start gathering.
- * Clicking the storehouse does the same, then opens the storehouse panel.
+ * turns toward it if needed, then asks the server to start gathering; a wheat
+ * field works the same way with harvesting. Clicking the storehouse does the
+ * same, then opens the storehouse panel.
  */
 class WorldScene extends Phaser.Scene {
   private readonly options: WorldOptions;
@@ -102,6 +113,10 @@ class WorldScene extends Phaser.Scene {
   /** The target waiting on a turn before use; cleared if the player does anything else. */
   private turningToward: Target | null = null;
   private job: Job | null;
+  private fields: Field[];
+  /** What the field layer last drew (ids and labels); redrawn when this changes. */
+  private drawnFields: string | null = null;
+  private fieldLayer: Phaser.GameObjects.Container | null = null;
   private avatar!: Phaser.GameObjects.Container;
   private arrow!: Phaser.GameObjects.Graphics;
   private progressBar!: Phaser.GameObjects.Graphics;
@@ -119,11 +134,17 @@ class WorldScene extends Phaser.Scene {
     this.serverFacing = options.character.facing;
     this.lastSent = this.position;
     this.job = options.job;
+    this.fields = options.fields;
   }
 
   /** The server's latest word on the character's job. Safe to call before the scene starts. */
   setJob(job: Job | null) {
     this.job = job;
+  }
+
+  /** The server's latest word on the wheat fields. Safe to call before the scene starts. */
+  setFields(fields: Field[]) {
+    this.fields = fields;
   }
 
   create() {
@@ -135,7 +156,9 @@ class WorldScene extends Phaser.Scene {
       }
     }
 
-    // Nodes and buildings sit above the grass and below the character (drawing order sets depth).
+    // Fields, nodes and buildings sit above the grass and below the character (drawing order sets depth).
+    this.fieldLayer = this.add.container(0, 0);
+    this.drawFields();
     const nodes = this.add.graphics();
     for (const id of nodesIn(this.options.character.region)) {
       drawNode(nodes, RESOURCE_NODES[id]);
@@ -185,11 +208,17 @@ class WorldScene extends Phaser.Scene {
       if (!tile) return;
       const { region } = this.options.character;
       const nodeId = nodeAt(tile, region);
+      const field = fieldAt(this.fields, tile, region);
       const buildingId = buildingAt(tile, region);
       this.turningToward = null;
       if (nodeId) {
         const approach = nearestAdjacentTile(this.position, RESOURCE_NODES[nodeId], this.region);
         this.target = approach ? { kind: "node", id: nodeId } : null;
+        this.destination = approach;
+      } else if (field) {
+        // A growing field is still a target: the server's refusal says it's not ready yet.
+        const approach = nearestAdjacentTile(this.position, field, this.region);
+        this.target = approach ? { kind: "field", id: field.id } : null;
         this.destination = approach;
       } else if (buildingId && BUILDINGS[buildingId].kind === "storehouse") {
         const approach = approachTile(this.position, BUILDINGS[buildingId], this.region);
@@ -262,6 +291,11 @@ class WorldScene extends Phaser.Scene {
     }
 
     this.drawProgress();
+    this.drawFields();
+  }
+
+  private fieldById(id: string): Field | null {
+    return this.fields.find((f) => f.id === id) ?? null;
   }
 
   /** Standing still next to the target, with the server agreeing where we stand. */
@@ -272,24 +306,49 @@ class WorldScene extends Phaser.Scene {
       inFlight: this.inFlight,
       stepping: this.stepping,
     };
-    return target.kind === "node"
-      ? readyToGather({ ...settled, node: RESOURCE_NODES[target.id] })
-      : readyAtBuilding({ ...settled, building: BUILDINGS[target.id] });
+    switch (target.kind) {
+      case "node":
+        return readyToGather({ ...settled, node: RESOURCE_NODES[target.id] });
+      case "field": {
+        const field = this.fieldById(target.id);
+        // Gone while we walked: ask anyway once settled, and the server says it's gone.
+        if (!field) return !settled.inFlight && !settled.stepping;
+        return readyToGather({ ...settled, node: field });
+      }
+      case "building":
+        return readyAtBuilding({ ...settled, building: BUILDINGS[target.id] });
+    }
+  }
+
+  /** What to do once facing the target, and which way to turn first (null: no turn needed). */
+  private plan(target: Target): { act: () => void; toward: Direction | null } {
+    switch (target.kind) {
+      case "node":
+        return {
+          act: () => this.options.startGather(target.id),
+          toward: turnBeforeGather(this.position, RESOURCE_NODES[target.id], this.serverFacing),
+        };
+      case "field": {
+        const field = this.fieldById(target.id);
+        return {
+          act: () => this.options.startHarvest(target.id),
+          toward: field ? turnBeforeGather(this.position, field, this.serverFacing) : null,
+        };
+      }
+      case "building":
+        return {
+          act: () => this.options.openStorehouse(),
+          toward: turnTowardBuilding(this.position, BUILDINGS[target.id], this.serverFacing),
+        };
+    }
   }
 
   /**
    * Turn toward the target first when the server doesn't have us facing it,
-   * then gather at the node or open the storehouse.
+   * then gather at the node, harvest the field or open the storehouse.
    */
   private use(target: Target) {
-    const act =
-      target.kind === "node"
-        ? () => this.options.startGather(target.id)
-        : () => this.options.openStorehouse();
-    const toward =
-      target.kind === "node"
-        ? turnBeforeGather(this.position, RESOURCE_NODES[target.id], this.serverFacing)
-        : turnTowardBuilding(this.position, BUILDINGS[target.id], this.serverFacing);
+    const { act, toward } = this.plan(target);
     if (toward === null) {
       act();
       return;
@@ -310,6 +369,43 @@ class WorldScene extends Phaser.Scene {
       this.serverFacing = toward;
       act();
     });
+  }
+
+  /**
+   * Draws the region's wheat fields, each with a small label: time left while
+   * growing, wheat left once grown. Cheap to call every frame: it only redraws
+   * when a field or a label changed.
+   */
+  private drawFields() {
+    const layer = this.fieldLayer;
+    if (!layer) return;
+    const now = Date.now();
+    const shown = fieldsIn(this.fields, this.options.character.region).map((field) => ({
+      field,
+      growing: isGrowing(field, now),
+      label: fieldLabel(field, now),
+    }));
+    const key = shown.map((s) => `${s.field.id}=${s.growing ? "g" : ""}${s.label}`).join("|");
+    if (key === this.drawnFields) return;
+    this.drawnFields = key;
+
+    layer.removeAll(true);
+    const g = this.add.graphics();
+    layer.add(g);
+    for (const { field, growing, label } of shown) {
+      drawField(g, field, growing);
+      const text = this.add
+        .text((field.x + 1) * TILE - 1, (field.y + 1) * TILE - 1, label, {
+          fontFamily: "Georgia, serif",
+          fontSize: "9px",
+          color: growing ? "#c8f0b0" : "#f5e9c8",
+          backgroundColor: "#00000088",
+          padding: { x: 2, y: 0 },
+        })
+        .setOrigin(1, 1)
+        .setAlpha(0.85);
+      layer.add(text);
+    }
   }
 
   /** A labelled square over the footprint until we have pixel art. */
@@ -361,7 +457,7 @@ class WorldScene extends Phaser.Scene {
 
   private stepTo(next: Tile) {
     this.stepping = true;
-    // Walking away cancels a gather on the server; hide the bar now rather than on its reply.
+    // Walking away cancels a gather or harvest on the server; hide the bar now rather than on its reply.
     // A craft keeps going, so its bar keeps filling.
     if (this.job && walkingCancels(this.job)) this.job = null;
     this.setFacing(facingAfterStep(this.position, next, this.facing));
@@ -440,14 +536,27 @@ function drawNode(g: Phaser.GameObjects.Graphics, node: ResourceNode) {
       g.lineStyle(2, 0x4d4d4d, 1);
       g.strokeEllipse(cx, cy + 2, TILE * 0.8, TILE * 0.6);
       break;
-    case "farm":
-      g.fillStyle(0x7a5230, 1);
-      g.fillRect(left + 1, top + 1, TILE - 2, TILE - 2);
-      g.fillStyle(0xe0c040, 1);
-      for (let stripe = 0; stripe < 4; stripe++) {
-        g.fillRect(left + 4 + stripe * 7, top + 4, 3, TILE - 8);
+  }
+}
+
+/** A grown field is soil with rows of ripe wheat; a growing one is darker soil with green sprouts. */
+function drawField(g: Phaser.GameObjects.Graphics, field: Field, growing: boolean) {
+  const left = field.x * TILE;
+  const top = field.y * TILE;
+  g.fillStyle(growing ? 0x5e3d22 : 0x7a5230, 1);
+  g.fillRect(left + 1, top + 1, TILE - 2, TILE - 2);
+  if (growing) {
+    g.fillStyle(0x7cc04a, 1);
+    for (let row = 0; row < 3; row++) {
+      for (let col = 0; col < 4; col++) {
+        g.fillRect(left + 5 + col * 7, top + 4 + row * 8, 2, 4);
       }
-      break;
+    }
+    return;
+  }
+  g.fillStyle(0xe0c040, 1);
+  for (let stripe = 0; stripe < 4; stripe++) {
+    g.fillRect(left + 4 + stripe * 7, top + 4, 3, TILE - 8);
   }
 }
 
@@ -466,6 +575,7 @@ export function createGame(parent: HTMLElement, options: WorldOptions): World {
   });
   return {
     setJob: (job) => scene.setJob(job),
+    setFields: (fields) => scene.setFields(fields),
     destroy: () => game.destroy(true),
   };
 }

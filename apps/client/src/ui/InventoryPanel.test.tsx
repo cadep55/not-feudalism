@@ -36,6 +36,24 @@ describe("InventoryPanel", () => {
     expect(screen.getByRole("status")).toHaveTextContent("Gathering wood…");
   });
 
+  it("shows a wheat harvest in progress", () => {
+    render(
+      <InventoryPanel
+        inventory={{}}
+        job={{ kind: "harvest", fieldId: "heartland:13,14", startedAt: 0, completesAt: 3_000 }}
+      />,
+    );
+    expect(screen.getByRole("status")).toHaveTextContent("Harvesting wheat…");
+  });
+
+  it("lists wheat seeds like any other item", () => {
+    render(<InventoryPanel inventory={{ wheat: 4, wheat_seeds: 1 }} job={null} />);
+    expect(screen.getAllByRole("listitem").map((row) => row.textContent)).toEqual([
+      "Wheat 4/5",
+      "Wheat seeds 1/5",
+    ]);
+  });
+
   it("leaves crafting status to the crafting panel", () => {
     render(
       <InventoryPanel

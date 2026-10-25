@@ -1,7 +1,8 @@
 import type { ItemId } from "./items.ts";
 import type { RegionId } from "./world.ts";
 
-// Gathering balance (owner decisions, 2026-10-24: one node of each, never runs out).
+// Gathering balance (owner decisions, 2026-10-24: one tree and one rock, never run out).
+// Wheat fields are not nodes: they run out and can be planted (data/farming.ts).
 
 /** How long one gather takes. */
 export const GATHER_DURATION_MS = 3_000;
@@ -14,7 +15,7 @@ export type ResourceNode = {
   x: number;
   y: number;
   /** What it looks like on the map. */
-  kind: "tree" | "rock" | "farm";
+  kind: "tree" | "rock";
   yields: ItemId;
   /** A tool the character must carry to gather here, or null. */
   requires: ItemId | null;
@@ -29,14 +30,6 @@ export const RESOURCE_NODES = {
     kind: "rock",
     yields: "stone",
     requires: null,
-  },
-  heartland_farm: {
-    region: "heartland",
-    x: 13,
-    y: 14,
-    kind: "farm",
-    yields: "wheat",
-    requires: "rake",
   },
 } as const satisfies Record<string, ResourceNode>;
 

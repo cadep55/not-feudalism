@@ -6,6 +6,7 @@ import { refreshDelay } from "../game/gathering.ts";
 import type { Tile } from "../game/movement.ts";
 import type { Api, Player } from "../net/api.ts";
 import { CraftingPanel } from "./CraftingPanel.tsx";
+import { FarmingPanel } from "./FarmingPanel.tsx";
 import { InventoryPanel } from "./InventoryPanel.tsx";
 import { FAILURE_MESSAGES } from "./messages.ts";
 import { StorehousePanel } from "./StorehousePanel.tsx";
@@ -102,6 +103,31 @@ export function GameScreen({ api, player, onLogOut }: Props) {
     [api, showState],
   );
 
+  // Harvesting a field works like gathering: the wheat (and maybe a seed) arrives when the job ends.
+  const startHarvest = useCallback(
+    async (fieldId: string) => {
+      const result = await api.sendAction({ type: "field.harvest", payload: { fieldId } });
+      if (result.ok) {
+        showState(result.value);
+        setNotice(null);
+      } else {
+        setNotice(FAILURE_MESSAGES[result.reason]);
+      }
+    },
+    [api, showState],
+  );
+
+  // Planting is instant: the reply carries one seed fewer and the new, growing field.
+  const plant = useCallback(async () => {
+    const result = await api.sendAction({ type: "field.plant", payload: {} });
+    if (result.ok) {
+      showState(result.value);
+      setNotice(null);
+    } else {
+      setNotice(FAILURE_MESSAGES[result.reason]);
+    }
+  }, [api, showState]);
+
   // Turning in place, e.g. to face a node before gathering at it.
   const turn = useCallback(
     async (facing: Direction): Promise<boolean> => {
@@ -175,13 +201,16 @@ export function GameScreen({ api, player, onLogOut }: Props) {
             <GameCanvas
               character={load.state.character}
               job={load.state.job}
+              fields={load.state.fields}
               sendPosition={sendPosition}
               startGather={startGather}
+              startHarvest={startHarvest}
               turn={turn}
               openStorehouse={openStorehouse}
             />
             <div className="side">
               <InventoryPanel inventory={load.state.inventory} job={load.state.job} />
+              <FarmingPanel inventory={load.state.inventory} job={load.state.job} onPlant={plant} />
               <CraftingPanel
                 inventory={load.state.inventory}
                 job={load.state.job}
@@ -201,8 +230,8 @@ export function GameScreen({ api, player, onLogOut }: Props) {
             </p>
           )}
           <p className="hint">
-            Click a tile to walk there, or use the arrow keys / WASD. Click a tree, rock or field to
-            gather, or the storehouse to store and take items.
+            Click a tile to walk there, or use the arrow keys / WASD. Click a tree or rock to
+            gather, a wheat field to harvest it, or the storehouse to store and take items.
           </p>
         </>
       )}

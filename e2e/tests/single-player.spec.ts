@@ -158,6 +158,12 @@ test("the core loop: gather wood and stone, craft a rake, harvest wheat", async 
     await clickTile(page, FARM);
     await expect(count("Wheat")).toHaveText("1/5", { timeout: 20_000 });
   });
+
+  await test.step("no seeds yet, so planting is off (a seed drops every 10th harvest)", async () => {
+    const farming = page.getByRole("region", { name: "Farming" });
+    await expect(farming).toContainText("Wheat seeds: 0");
+    await expect(farming.getByRole("button", { name: "Plant seed" })).toBeDisabled();
+  });
 });
 
 // Must match BUILDINGS.heartland_storehouse in packages/shared/src/data/buildings.ts.

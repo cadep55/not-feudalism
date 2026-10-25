@@ -1,6 +1,7 @@
 import {
   type CraftJob,
   type GatherJob,
+  newField,
   RESOURCE_NODES,
   type ResourceNode,
   tileDistance,
@@ -26,13 +27,14 @@ function nodeOn(x: number, y: number): ResourceNode {
 
 describe("nodesIn and nodeAt", () => {
   it("lists the region's nodes", () => {
-    expect(nodesIn("heartland")).toEqual(["heartland_tree", "heartland_rock", "heartland_farm"]);
+    expect(nodesIn("heartland")).toEqual(["heartland_tree", "heartland_rock"]);
     expect(nodesIn("nowhere")).toEqual([]);
   });
 
   it("finds the node on a clicked tile, or null for plain ground", () => {
     expect(nodeAt({ x: 5, y: 5 }, "heartland")).toBe("heartland_tree");
-    expect(nodeAt({ x: 13, y: 14 }, "heartland")).toBe("heartland_farm");
+    // The wheat field there is game state now, not a node (see fields.ts).
+    expect(nodeAt({ x: 13, y: 14 }, "heartland")).toBeNull();
     expect(nodeAt({ x: 6, y: 5 }, "heartland")).toBeNull();
     expect(nodeAt({ x: 5, y: 5 }, "nowhere")).toBeNull();
   });
@@ -123,6 +125,12 @@ describe("walkingCancels", () => {
     ).toBe(true);
   });
 
+  it("is true for a harvest, which is tied to the field like a gather", () => {
+    expect(
+      walkingCancels({ kind: "harvest", fieldId: "heartland:13,14", startedAt: 0, completesAt: 1 }),
+    ).toBe(true);
+  });
+
   it("is false for a craft, which keeps going on the move", () => {
     expect(walkingCancels({ kind: "craft", recipeId: "rake", startedAt: 0, completesAt: 1 })).toBe(
       false,
@@ -152,6 +160,15 @@ describe("readyToGather", () => {
   it("waits until next to the node", () => {
     const far = { x: 9, y: 9 };
     expect(readyToGather({ ...base, position: far, lastSent: far })).toBe(false);
+  });
+
+  it("works for a wheat field the same way", () => {
+    const field = newField("heartland", 13, 14, 0);
+    const beside = { x: 12, y: 14 };
+    expect(nearestAdjacentTile({ x: 10, y: 14 }, field, REGION)).toEqual(beside);
+    expect(readyToGather({ ...base, position: beside, lastSent: beside, node: field })).toBe(true);
+    const on = { x: 13, y: 14 };
+    expect(readyToGather({ ...base, position: on, lastSent: on, node: field })).toBe(false);
   });
 
   it("never gathers while standing on the node", () => {

@@ -161,3 +161,29 @@ export const storehouseItems = pgTable(
     check("storehouse_items_quantity_positive", sql`${table.quantity} > 0`),
   ],
 );
+
+/** Wheat fields in each character's world: they run out, and new ones can be planted. */
+export const fields = pgTable(
+  "fields",
+  {
+    characterId: uuid("character_id")
+      .notNull()
+      .references(() => characters.id, { onDelete: "cascade" }),
+    // One field per tile: "region:x,y" (fieldId() in packages/shared/src/rules/farming.ts).
+    fieldId: text("field_id").notNull(),
+    region: text("region").notNull(),
+    x: integer("x").notNull(),
+    y: integer("y").notNull(),
+    wheat: integer("wheat").notNull(),
+    seeds: integer("seeds").notNull(),
+    harvests: integer("harvests").notNull().default(0),
+    // When a planted field has finished growing.
+    readyAt: timestamp("ready_at", { withTimezone: true }).notNull(),
+    ...timestamps,
+  },
+  (table) => [
+    primaryKey({ columns: [table.characterId, table.fieldId] }),
+    check("fields_wheat_positive", sql`${table.wheat} > 0`),
+    check("fields_seeds_not_negative", sql`${table.seeds} >= 0`),
+  ],
+);

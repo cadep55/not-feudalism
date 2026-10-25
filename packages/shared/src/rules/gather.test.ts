@@ -7,7 +7,6 @@ import { addItems } from "./inventory.ts";
 import { resolveJob } from "./jobs.ts";
 
 const tree = RESOURCE_NODES.heartland_tree;
-const farm = RESOURCE_NODES.heartland_farm;
 const NOW = 1_000_000;
 
 /**
@@ -32,6 +31,7 @@ function stateAt(
     },
     inventory: {},
     storage: {},
+    fields: [],
     job: null,
     ...overrides,
   };
@@ -86,17 +86,6 @@ describe("startGather", () => {
       ok: false,
       reason: "busy",
     });
-  });
-
-  it("needs a rake for the farm", () => {
-    const nextToFarm = { x: farm.x + 1, y: farm.y };
-    expect(startGather(stateAt(nextToFarm, {}, farm), "heartland_farm", NOW)).toEqual({
-      ok: false,
-      reason: "missing_tool",
-    });
-    expect(
-      startGather(stateAt(nextToFarm, { inventory: { rake: 1 } }, farm), "heartland_farm", NOW).ok,
-    ).toBe(true);
   });
 });
 

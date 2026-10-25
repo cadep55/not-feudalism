@@ -20,6 +20,10 @@ export const FAILURE_MESSAGES: Record<FailureReason | "network_error", string> =
   not_at_storehouse: "Stand next to the storehouse and face it.",
   not_enough_items: "You don't have that many.",
   storehouse_full: `The storehouse is full (${STOREHOUSE_LIMIT} max).`,
+  no_field: "That field is gone.",
+  field_growing: "That field is still growing.",
+  no_seeds: "You have no wheat seeds.",
+  cannot_plant_here: "You can't plant there. Face an empty grass tile.",
   protocol_mismatch: "A new version of the game is out. Please refresh the page.",
   network_error: "Can't reach the server. Is it running?",
 };

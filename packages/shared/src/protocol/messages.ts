@@ -26,6 +26,14 @@ export type Turn = z.infer<typeof Turn>;
 export const GatherStart = z.strictObject({ nodeId: z.enum(NODE_IDS) });
 export type GatherStart = z.infer<typeof GatherStart>;
 
+/** Intent: start harvesting a grown wheat field next to the character. */
+export const FieldHarvest = z.strictObject({ fieldId: z.string().min(1).max(64) });
+export type FieldHarvest = z.infer<typeof FieldHarvest>;
+
+/** Intent: plant a wheat seed on the tile in front of the character. */
+export const FieldPlant = z.strictObject({});
+export type FieldPlant = z.infer<typeof FieldPlant>;
+
 /** Intent: start crafting a recipe (anywhere). */
 export const CraftStart = z.strictObject({ recipeId: z.enum(RECIPE_IDS) });
 export type CraftStart = z.infer<typeof CraftStart>;

@@ -43,6 +43,20 @@
       "when": 1792878949685,
       "tag": "0005_storehouse_items",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1792894286914,
+      "tag": "0006_fields",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1792894287770,
+      "tag": "0007_starting_fields",
+      "breakpoints": true
     }
   ]
 }
