@@ -681,10 +681,12 @@ export function createGame(parent: HTMLElement, options: WorldOptions): World {
     height: size.height * TILE,
     pixelArt: true,
     backgroundColor: "#2d4a22",
+    // Stretch the map to fill its box on the page, keeping its shape, so it grows with the window.
+    scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
     scene,
   });
-  // The page layout scales the canvas to fit (e.g. when panels open or close), not only when
-  // the window resizes. Phaser maps clicks to tiles using the canvas's on-screen size, so
+  // The box resizes with the page layout (e.g. when panels open or close), not only when the
+  // window resizes. Phaser maps clicks to tiles using the canvas's on-screen size, so
   // re-measure whenever it changes, or clicks land on the wrong tile.
   const resizes = new ResizeObserver(() => game.scale.refresh());
   resizes.observe(parent);

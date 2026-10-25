@@ -15,7 +15,6 @@ function Harness({ initial = [...PANEL_IDS] }: { initial?: PanelId[] }) {
         inventory: <section aria-label="Inventory">inv</section>,
         crafting: <section aria-label="Crafting">craft</section>,
         farming: <section aria-label="Farming">farm</section>,
-        storehouse: <section aria-label="Storehouse">store</section>,
       }}
     />
   );
@@ -24,7 +23,7 @@ function Harness({ initial = [...PANEL_IDS] }: { initial?: PanelId[] }) {
 describe("PanelBar", () => {
   it("shows a pressed tab and the panel for each open panel", () => {
     render(<Harness />);
-    for (const name of ["Inventory", "Crafting", "Farming", "Storehouse"]) {
+    for (const name of ["Inventory", "Crafting", "Farming"]) {
       expect(screen.getByRole("button", { name })).toHaveAttribute("aria-pressed", "true");
       expect(screen.getByRole("region", { name })).toBeInTheDocument();
     }
@@ -41,7 +40,7 @@ describe("PanelBar", () => {
 
     await userEvent.click(screen.getByRole("button", { name: "Crafting" }));
     const order = screen.getAllByRole("region").map((r) => r.getAttribute("aria-label"));
-    expect(order).toEqual(["Inventory", "Crafting", "Farming", "Storehouse"]);
+    expect(order).toEqual(["Inventory", "Crafting", "Farming"]);
   });
 
   it("tells the row how many panels share the width", async () => {

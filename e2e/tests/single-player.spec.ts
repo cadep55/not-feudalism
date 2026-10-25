@@ -180,12 +180,11 @@ test("a player stores wood in the storehouse and takes it back", async ({ page }
     await expect(inventory.getByRole("listitem")).toHaveText(["Wood 1/5"], { timeout: 15_000 });
   });
 
-  await test.step("away from the storehouse, its buttons are off", async () => {
-    await expect(storehouse).toContainText("Walk to the storehouse and face it to use it.");
-    await expect(storehouse.getByRole("button", { name: "Store Wood" })).toBeDisabled();
+  await test.step("away from the storehouse, it stays closed", async () => {
+    await expect(storehouse).toHaveCount(0);
   });
 
-  await test.step("click the storehouse, then store the wood", async () => {
+  await test.step("click the storehouse: it opens over the map, then store the wood", async () => {
     await clickTile(page, STOREHOUSE);
     const store = storehouse.getByRole("button", { name: "Store Wood" });
     await expect(store).toBeEnabled({ timeout: 15_000 });
@@ -196,9 +195,11 @@ test("a player stores wood in the storehouse and takes it back", async ({ page }
     await expect(inventory.getByRole("listitem")).toHaveCount(0);
   });
 
-  await test.step("take it back", async () => {
+  await test.step("take it back, then close the storehouse", async () => {
     await storehouse.getByRole("button", { name: "Take Wood" }).click();
     await expect(inventory.getByRole("listitem")).toHaveText(["Wood 1/5"]);
+    await page.getByRole("button", { name: "Close storehouse" }).click();
+    await expect(storehouse).toHaveCount(0);
   });
 });
 
@@ -221,6 +222,11 @@ test("a villager sent for wood fills the storehouse", async ({ page }) => {
     const job = villagers.getByRole("combobox").first();
     await job.selectOption("wood");
     await expect(villagers.getByRole("listitem").first()).toContainText("Gathering wood");
+  });
+
+  await test.step("walk to the storehouse to watch it", async () => {
+    await clickTile(page, STOREHOUSE);
+    await expect(storehouse).toBeVisible({ timeout: 15_000 });
   });
 
   await test.step("about 50 seconds later, 5 wood are in the storehouse", async () => {

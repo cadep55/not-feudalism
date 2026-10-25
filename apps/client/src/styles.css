@@ -15,6 +15,11 @@
 body {
   margin: 0;
   min-height: 100vh;
+}
+
+/* Fills the window, so the game screen can stretch with it; the login form sits centred. */
+#root {
+  min-height: 100vh;
   display: grid;
   place-items: center;
 }
@@ -142,20 +147,29 @@ button:disabled {
 /* The map takes whatever height the header and panel bar leave, shrinking to fit. */
 .map-area {
   flex: 1 1 0;
-  min-height: 160px;
+  /* The map gets most of the screen; the panel bar stays compact underneath. */
+  min-height: 55vh;
   display: flex;
   justify-content: center;
+  align-items: center;
+  container-type: size;
 }
 
-/* Hugs the canvas, so overlays like the villagers menu sit on the map's corner. */
+/*
+ * As large as the space allows while keeping the region's shape (--map-ratio, set
+ * from the region size), so overlays like the villagers menu sit on the map's corner.
+ */
 .map {
   position: relative;
-  height: 100%;
-  width: fit-content;
-  max-width: 100%;
+  aspect-ratio: var(--map-ratio, 4 / 3);
+  width: min(100cqw, 100cqh * var(--map-ratio, 4 / 3));
+  box-sizing: border-box;
+  border: 4px solid var(--wood);
+  border-radius: 4px;
 }
 
 .map .canvas {
+  width: 100%;
   height: 100%;
 }
 
@@ -179,10 +193,8 @@ button:disabled {
 
 .panel-bar {
   flex: none;
-  max-height: 45vh;
-  overflow-y: auto;
   display: grid;
-  gap: 0.4rem;
+  gap: 0.3rem;
 }
 
 .panel-tabs {
@@ -195,7 +207,8 @@ button:disabled {
   background: transparent;
   color: var(--parchment);
   border: 2px solid var(--wood);
-  padding: 0.25rem 0.75rem;
+  padding: 0.1rem 0.6rem;
+  font-size: 0.85rem;
 }
 
 .panel-tabs button[aria-pressed="true"] {
@@ -206,14 +219,16 @@ button:disabled {
 .panel-row {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.75rem;
+  gap: 0.5rem;
   align-items: stretch;
 }
 
+/* Each open panel gets an equal share and a short, fixed height; long content scrolls inside. */
 .panel-slot {
   flex: 1 1 0;
-  min-width: 200px;
+  min-width: 170px;
   display: flex;
+  max-height: min(24vh, 170px);
 }
 
 .panel-bar-empty {
@@ -387,13 +402,6 @@ button:disabled {
 
 .canvas canvas {
   display: block;
-  box-sizing: border-box;
-  max-width: 100%;
-  max-height: 100%;
-  width: auto;
-  height: auto;
-  border: 4px solid var(--wood);
-  border-radius: 4px;
 }
 
 /* Overrides of .panel for where it sits; after .panel so they win. */
@@ -402,6 +410,41 @@ button:disabled {
   max-width: 100%;
 }
 
+/* Compact panels in the bottom bar. */
 .panel-slot > .panel {
   flex: 1;
+  overflow-y: auto;
+  padding: 0.4rem 0.7rem;
+  font-size: 0.85rem;
+  border-width: 3px;
+}
+
+.panel-slot > .panel h2 {
+  font-size: 0.95rem;
+  margin-bottom: 0.3rem;
+}
+
+/* Windows that open over the map, like the storehouse. */
+.map-overlay {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 3;
+  width: min(280px, calc(100% - 16px));
+  max-height: calc(100% - 16px);
+  overflow-y: auto;
+}
+
+.map-overlay .panel {
+  width: 100%;
+}
+
+.overlay-close {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  z-index: 1;
+  padding: 0.1rem 0.45rem;
+  line-height: 1.2;
 }

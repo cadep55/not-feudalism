@@ -502,6 +502,13 @@ describe("GameScreen storehouse", () => {
     storage: { stone: 7 },
   };
 
+  /** The game reports the character arrived at the storehouse, which opens it over the map. */
+  async function arrive() {
+    const props = canvas.props;
+    if (!props) throw new Error("GameCanvas was not rendered");
+    act(() => props.openStorehouse());
+  }
+
   function storehouseRows() {
     const list = screen.queryByRole("list", { name: "In the storehouse" });
     return list
@@ -518,6 +525,7 @@ describe("GameScreen storehouse", () => {
       sendAction: vi.fn(async () => ({ ok: true as const, value: stored })),
     });
     await renderReady(api);
+    await arrive();
     expect(inventoryRows()).toEqual(["Wood 3/5"]);
 
     await userEvent.click(screen.getByRole("button", { name: "Store Wood" }));
@@ -541,6 +549,7 @@ describe("GameScreen storehouse", () => {
       sendAction: vi.fn(async () => ({ ok: true as const, value: taken })),
     });
     await renderReady(api);
+    await arrive();
 
     await userEvent.click(screen.getByRole("button", { name: "Take Stone" }));
 
@@ -559,6 +568,7 @@ describe("GameScreen storehouse", () => {
       sendAction: vi.fn(async () => ({ ok: false as const, reason: "hands_full" as const })),
     });
     await renderReady(api);
+    await arrive();
 
     await userEvent.click(screen.getByRole("button", { name: "Take Stone" }));
 
@@ -574,26 +584,50 @@ describe("GameScreen storehouse", () => {
       sendAction: vi.fn(async () => ({ ok: false as const, reason: "not_at_storehouse" as const })),
     });
     await renderReady(api);
+    await arrive();
     await userEvent.click(screen.getByRole("button", { name: "Store Wood" }));
     expect(screen.getByRole("alert")).toHaveTextContent(
       "Stand next to the storehouse and face it.",
     );
   });
 
-  it("highlights the storehouse panel when the game says the character arrived", async () => {
-    const { props } = await renderReady();
-    const panel = screen.getByRole("region", { name: "Storehouse" });
-    expect(panel).not.toHaveClass("highlighted");
-    act(() => props.openStorehouse());
-    expect(panel).toHaveClass("highlighted");
+  it("opens over the map only when the character arrives at the storehouse", async () => {
+    const api = fakeApi({
+      getState: vi.fn(async () => ({ ok: true as const, value: AT_STOREHOUSE })),
+    });
+    await renderReady(api);
+    expect(screen.queryByRole("region", { name: "Storehouse" })).not.toBeInTheDocument();
+    await arrive();
+    expect(screen.getByRole("region", { name: "Storehouse" })).toBeInTheDocument();
   });
 
-  it("reopens the storehouse panel if it was closed when the character arrives", async () => {
-    const { props } = await renderReady();
-    await userEvent.click(screen.getByRole("button", { name: "Storehouse" }));
+  it("closes with the close button or Esc", async () => {
+    const api = fakeApi({
+      getState: vi.fn(async () => ({ ok: true as const, value: AT_STOREHOUSE })),
+    });
+    await renderReady(api);
+    await arrive();
+    await userEvent.click(screen.getByRole("button", { name: "Close storehouse" }));
     expect(screen.queryByRole("region", { name: "Storehouse" })).not.toBeInTheDocument();
-    act(() => props.openStorehouse());
-    expect(screen.getByRole("region", { name: "Storehouse" })).toHaveClass("highlighted");
+
+    await arrive();
+    await userEvent.keyboard("{Escape}");
+    expect(screen.queryByRole("region", { name: "Storehouse" })).not.toBeInTheDocument();
+  });
+
+  it("closes by itself when the character walks away", async () => {
+    const walkedAway: GameState = {
+      ...AT_STOREHOUSE,
+      character: { ...AT_STOREHOUSE.character, x: 12, y: 8, facing: "w" },
+    };
+    const api = fakeApi({
+      getState: vi.fn(async () => ({ ok: true as const, value: AT_STOREHOUSE })),
+      sendAction: vi.fn(async () => ({ ok: true as const, value: walkedAway })),
+    });
+    const { props } = await renderReady(api);
+    await arrive();
+    await act(() => props.sendPosition({ x: 12, y: 8 }));
+    expect(screen.queryByRole("region", { name: "Storehouse" })).not.toBeInTheDocument();
   });
 });
 
@@ -707,6 +741,7 @@ describe("GameScreen villagers", () => {
     const firstAt = t.outbound + t.cycle - t.leg;
     const delivered: GameState = {
       ...started,
+      character: { ...started.character, x: 14, y: 8, facing: "e" },
       storage: { rake: 1, wood: 5 },
       villagers: started.villagers.map((v) =>
         v.task ? { ...v, task: { ...v.task, delivered: 1 } } : v,
@@ -727,6 +762,7 @@ describe("GameScreen villagers", () => {
       await vi.advanceTimersByTimeAsync(2_500);
     });
     expect(api.getState).toHaveBeenCalledTimes(2);
+    act(() => canvas.props?.openStorehouse());
     expect(screen.getByRole("region", { name: "Storehouse" })).toHaveTextContent("Wood");
   });
 
