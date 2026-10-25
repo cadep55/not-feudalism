@@ -1,4 +1,12 @@
-import { characters, type DbExecutor, fields, inventories, jobs, storehouseItems } from "@nf/db";
+import {
+  characters,
+  type DbExecutor,
+  fields,
+  inventories,
+  jobs,
+  storehouseItems,
+  villagers,
+} from "@nf/db";
 import {
   DEFAULT_FACING,
   type Field,
@@ -10,6 +18,7 @@ import {
   isNodeId,
   isRecipeId,
   type Job,
+  type VillagerTask,
 } from "@nf/shared";
 import { and, eq, isNull } from "drizzle-orm";
 
@@ -31,6 +40,11 @@ export async function loadStateForUpdate(db: DbExecutor, characterId: string): P
   const inventory = await loadItems(db, inventories, characterId);
   const storage = await loadItems(db, storehouseItems, characterId);
   const fieldRows = await db.select().from(fields).where(eq(fields.characterId, characterId));
+  const villagerRows = await db
+    .select()
+    .from(villagers)
+    .where(eq(villagers.characterId, characterId))
+    .orderBy(villagers.villagerId);
 
   const [active] = await db
     .select()
@@ -62,6 +76,12 @@ export async function loadStateForUpdate(db: DbExecutor, characterId: string): P
     inventory,
     storage,
     fields: fieldRows.map(toField),
+    villagers: villagerRows.map((row) => ({
+      id: row.villagerId,
+      name: row.name,
+      // Written only by saveState from validated VillagerTask objects.
+      task: (row.task as VillagerTask | null) ?? null,
+    })),
     job,
   };
 }
@@ -222,6 +242,14 @@ export async function saveState(
   await saveItems(db, inventories, characterId, before.inventory, after.inventory, now);
   await saveItems(db, storehouseItems, characterId, before.storage, after.storage, now);
   await saveFields(db, characterId, before.fields, after.fields, now);
+  for (const villager of after.villagers) {
+    const old = before.villagers.find((v) => v.id === villager.id);
+    if (old && JSON.stringify(old.task) === JSON.stringify(villager.task)) continue;
+    await db
+      .update(villagers)
+      .set({ task: villager.task, updatedAt: now })
+      .where(and(eq(villagers.characterId, characterId), eq(villagers.villagerId, villager.id)));
+  }
 
   const jobChanged = JSON.stringify(before.job) !== JSON.stringify(after.job);
   if (jobChanged && before.job) {

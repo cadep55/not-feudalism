@@ -18,6 +18,8 @@ const STATUS: Record<FailureReason, number> = {
   field_growing: 422,
   no_seeds: 422,
   cannot_plant_here: 422,
+  no_villager: 422,
+  no_rake_in_storehouse: 422,
   moved_too_fast: 422,
   too_far_away: 422,
   not_facing: 422,

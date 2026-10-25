@@ -22,6 +22,7 @@ const state: GameState = {
   inventory: {},
   storage: {},
   fields: [],
+  villagers: [],
   job: null,
 };
 

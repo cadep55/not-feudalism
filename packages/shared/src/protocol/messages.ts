@@ -2,6 +2,7 @@ import { z } from "zod";
 import { ITEM_IDS } from "../data/items.ts";
 import { RECIPE_IDS } from "../data/recipes.ts";
 import { NODE_IDS } from "../data/resources.ts";
+import { VILLAGER_JOBS } from "../data/villagers.ts";
 import { DIRECTIONS } from "../game/direction.ts";
 import { LIMITS } from "./limits.ts";
 
@@ -33,6 +34,13 @@ export type FieldHarvest = z.infer<typeof FieldHarvest>;
 /** Intent: plant a wheat seed on the tile in front of the character. */
 export const FieldPlant = z.strictObject({});
 export type FieldPlant = z.infer<typeof FieldPlant>;
+
+/** Intent: give a villager a job (or make it idle). */
+export const VillagerAssign = z.strictObject({
+  villagerId: z.string().min(1).max(64),
+  job: z.enum(VILLAGER_JOBS),
+});
+export type VillagerAssign = z.infer<typeof VillagerAssign>;
 
 /** Intent: start crafting a recipe (anywhere). */
 export const CraftStart = z.strictObject({ recipeId: z.enum(RECIPE_IDS) });

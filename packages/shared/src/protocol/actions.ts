@@ -7,6 +7,7 @@ import {
   MoveTo,
   StorehouseTransfer,
   Turn,
+  VillagerAssign,
 } from "./messages.ts";
 
 /**
@@ -22,6 +23,11 @@ export const ActionRequest = z.discriminatedUnion("type", [
   z.strictObject({ requestId: z.uuid(), type: z.literal("craft.start"), payload: CraftStart }),
   z.strictObject({ requestId: z.uuid(), type: z.literal("field.harvest"), payload: FieldHarvest }),
   z.strictObject({ requestId: z.uuid(), type: z.literal("field.plant"), payload: FieldPlant }),
+  z.strictObject({
+    requestId: z.uuid(),
+    type: z.literal("villager.assign"),
+    payload: VillagerAssign,
+  }),
   z.strictObject({
     requestId: z.uuid(),
     type: z.literal("storehouse.store"),
