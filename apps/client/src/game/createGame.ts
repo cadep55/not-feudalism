@@ -11,6 +11,9 @@ import {
   REGIONS,
   RESOURCE_NODES,
   type ResourceNode,
+  type Villager,
+  type VillagerTask,
+  villagerActivity,
 } from "@nf/shared";
 import Phaser from "phaser";
 import {
@@ -41,8 +44,18 @@ import {
   type Tile,
   tileAt,
 } from "./movement.ts";
+import {
+  type Point,
+  pickWanderTile,
+  planStroll,
+  type Stroll,
+  strollPosition,
+} from "./villagers.ts";
 
 const TILE = 32;
+/** How far a gathering villager bobs, in pixels, and how fast (ms per bob): a subtle "working" cue. */
+const VILLAGER_BOB_PX = 3;
+const VILLAGER_BOB_MS = 400;
 /** The facing arrow is a hint, not a feature: keep it faint. */
 const ARROW_ALPHA = 0.45;
 
@@ -60,6 +73,8 @@ export type WorldOptions = {
   job: Job | null;
   /** The wheat fields when the game starts; later changes arrive through World.setFields. */
   fields: Field[];
+  /** The house's villagers when the game starts; later changes arrive through World.setVillagers. */
+  villagers: Villager[];
   sendPosition: (tile: Tile) => Promise<MoveOutcome>;
   /** Asks the server to start gathering; the result comes back as a setJob call. */
   startGather: (nodeId: NodeId) => void;
@@ -75,6 +90,7 @@ export type WorldOptions = {
 export type World = {
   setJob: (job: Job | null) => void;
   setFields: (fields: Field[]) => void;
+  setVillagers: (villagers: Villager[]) => void;
   destroy: () => void;
 };
 
@@ -83,6 +99,9 @@ type Target =
   | { kind: "node"; id: NodeId }
   | { kind: "field"; id: string }
   | { kind: "building"; id: BuildingId };
+
+/** A villager drawn on the map, and (while idle) the stroll it's on. Idle wandering is client-only. */
+type VillagerSprite = { figure: Phaser.GameObjects.Container; at: Point; stroll: Stroll | null };
 
 type MovementKeys = Record<"up" | "down" | "left" | "right", Phaser.Input.Keyboard.Key[]>;
 
@@ -117,6 +136,9 @@ class WorldScene extends Phaser.Scene {
   /** What the field layer last drew (ids and labels); redrawn when this changes. */
   private drawnFields: string | null = null;
   private fieldLayer: Phaser.GameObjects.Container | null = null;
+  private villagers: Villager[];
+  private villagerLayer: Phaser.GameObjects.Container | null = null;
+  private readonly villagerSprites = new Map<string, VillagerSprite>();
   private avatar!: Phaser.GameObjects.Container;
   private arrow!: Phaser.GameObjects.Graphics;
   private progressBar!: Phaser.GameObjects.Graphics;
@@ -135,6 +157,7 @@ class WorldScene extends Phaser.Scene {
     this.lastSent = this.position;
     this.job = options.job;
     this.fields = options.fields;
+    this.villagers = options.villagers;
   }
 
   /** The server's latest word on the character's job. Safe to call before the scene starts. */
@@ -145,6 +168,17 @@ class WorldScene extends Phaser.Scene {
   /** The server's latest word on the wheat fields. Safe to call before the scene starts. */
   setFields(fields: Field[]) {
     this.fields = fields;
+  }
+
+  /** The server's latest word on the villagers. Safe to call before the scene starts. */
+  setVillagers(villagers: Villager[]) {
+    this.villagers = villagers;
+    const ids = new Set(villagers.map((v) => v.id));
+    for (const [id, sprite] of this.villagerSprites) {
+      if (ids.has(id)) continue;
+      sprite.figure.destroy();
+      this.villagerSprites.delete(id);
+    }
   }
 
   create() {
@@ -167,6 +201,10 @@ class WorldScene extends Phaser.Scene {
     for (const id of buildingsIn(this.options.character.region)) {
       this.drawBuilding(buildings, BUILDINGS[id]);
     }
+
+    // Villagers walk over fields and buildings but below the player's character.
+    this.villagerLayer = this.add.container(0, 0);
+    this.drawVillagers();
 
     // A faint chevron at the tile's edge marks the character's front.
     this.arrow = this.add.graphics();
@@ -292,6 +330,7 @@ class WorldScene extends Phaser.Scene {
 
     this.drawProgress();
     this.drawFields();
+    this.drawVillagers();
   }
 
   private fieldById(id: string): Field | null {
@@ -406,6 +445,77 @@ class WorldScene extends Phaser.Scene {
         .setAlpha(0.85);
       layer.add(text);
     }
+  }
+
+  /** Where a task works, from the latest fields; null once its field is gone. */
+  private taskTarget(task: VillagerTask): Tile | null {
+    if (task.kind === "gather") return RESOURCE_NODES[task.nodeId];
+    return this.fieldById(task.fieldId);
+  }
+
+  /**
+   * Places every villager: working ones follow the shared timeline (the same
+   * one the server settles by), bobbing while they gather; idle ones stroll to
+   * random spots near the house and pause. Only drawn in the house's region.
+   */
+  private drawVillagers() {
+    const layer = this.villagerLayer;
+    if (!layer) return;
+    const home = this.options.character.region === BUILDINGS.heartland_house.region;
+    layer.setVisible(home);
+    if (!home) return;
+    const now = Date.now();
+    for (const villager of this.villagers) {
+      const sprite = this.villagerSprite(villager, layer, now);
+      const target = villager.task && this.taskTarget(villager.task);
+      let bob = 0;
+      if (villager.task && target) {
+        const doing = villagerActivity(villager.task, target, now);
+        sprite.at = { x: doing.x, y: doing.y };
+        sprite.stroll = null;
+        if (doing.activity === "gathering") {
+          bob = -VILLAGER_BOB_PX * Math.abs(Math.sin((now / VILLAGER_BOB_MS) * Math.PI));
+        }
+      } else {
+        // Idle (or its field just ran out and the server will say so): wander from where it stands.
+        if (!sprite.stroll || now >= sprite.stroll.nextAt) {
+          sprite.stroll = planStroll(sprite.at, now, Math.random, this.region);
+        }
+        sprite.at = strollPosition(sprite.stroll, now);
+      }
+      sprite.figure.setPosition(sprite.at.x * TILE + TILE / 2, sprite.at.y * TILE + TILE / 2 + bob);
+    }
+  }
+
+  /** The villager's figure, made on first sight: a small green-tunic figure with its name. */
+  private villagerSprite(
+    villager: Villager,
+    layer: Phaser.GameObjects.Container,
+    now: number,
+  ): VillagerSprite {
+    const existing = this.villagerSprites.get(villager.id);
+    if (existing) return existing;
+    const body = this.add.circle(0, 0, TILE * 0.24, 0x5b7f3a).setStrokeStyle(2, 0x3b2a14);
+    const head = this.add.circle(0, -TILE * 0.2, TILE * 0.11, 0xe0b98a).setStrokeStyle(1, 0x3b2a14);
+    const label = this.add
+      .text(0, -TILE * 0.52, villager.name, {
+        fontFamily: "Georgia, serif",
+        fontSize: "10px",
+        color: "#f5e9c8",
+        backgroundColor: "#00000077",
+        padding: { x: 3, y: 0 },
+      })
+      .setOrigin(0.5)
+      .setAlpha(0.9);
+    const figure = this.add.container(0, 0, [body, head, label]);
+    layer.add(figure);
+    // Start somewhere near the house, resting for a moment before the first stroll.
+    const at = pickWanderTile(Math.random, this.region);
+    const rest = Math.random() * 3_000;
+    const stroll: Stroll = { from: at, to: at, departAt: now, arriveAt: now, nextAt: now + rest };
+    const sprite = { figure, at, stroll };
+    this.villagerSprites.set(villager.id, sprite);
+    return sprite;
   }
 
   /** A labelled square over the footprint until we have pixel art. */
@@ -576,6 +686,7 @@ export function createGame(parent: HTMLElement, options: WorldOptions): World {
   return {
     setJob: (job) => scene.setJob(job),
     setFields: (fields) => scene.setFields(fields),
+    setVillagers: (villagers) => scene.setVillagers(villagers),
     destroy: () => game.destroy(true),
   };
 }

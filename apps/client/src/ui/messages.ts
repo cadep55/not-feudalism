@@ -24,6 +24,8 @@ export const FAILURE_MESSAGES: Record<FailureReason | "network_error", string> =
   field_growing: "That field is still growing.",
   no_seeds: "You have no wheat seeds.",
   cannot_plant_here: "You can't plant there. Face an empty grass tile.",
+  no_villager: "That villager isn't here.",
+  no_rake_in_storehouse: "Put a rake in the storehouse first — each farming villager needs one.",
   protocol_mismatch: "A new version of the game is out. Please refresh the page.",
   network_error: "Can't reach the server. Is it running?",
 };

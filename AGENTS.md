@@ -19,6 +19,7 @@ A persistent online medieval world in the spirit of Feudalism 2. Players start a
 | Code style, git workflow, testing rules, security rules | [docs/CONVENTIONS.md](docs/CONVENTIONS.md) |
 | The ordered setup checklist (what to build next) | [docs/INFRASTRUCTURE_PLAN.md](docs/INFRASTRUCTURE_PLAN.md) |
 | Why a decision was made | [docs/decisions/](docs/decisions/) |
+| How a game system works (e.g. villagers) | [docs/design/](docs/design/) |
 
 ## Stack at a glance
 

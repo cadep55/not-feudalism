@@ -201,3 +201,31 @@ test("a player stores wood in the storehouse and takes it back", async ({ page }
     await expect(inventory.getByRole("listitem")).toHaveText(["Wood 1/5"]);
   });
 });
+
+test("a villager sent for wood fills the storehouse", async ({ page }) => {
+  // One full villager trip: walk out, gather 5 at 9 s each, walk to the storehouse.
+  test.setTimeout(120_000);
+  await test.step("sign up", () => signUp(page));
+  const villagers = page.getByRole("region", { name: "Villagers" });
+  const storehouse = page.getByRole("region", { name: "Storehouse" });
+
+  await test.step("the house holds 3 idle villagers", async () => {
+    await expect(villagers.getByRole("listitem")).toHaveCount(3);
+    for (const row of await villagers.getByRole("listitem").all()) {
+      await expect(row).toContainText("Idle");
+    }
+  });
+
+  await test.step("send the first villager for wood", async () => {
+    const job = villagers.getByRole("combobox").first();
+    await job.selectOption("wood");
+    await expect(villagers.getByRole("listitem").first()).toContainText("Gathering wood");
+  });
+
+  await test.step("about 50 seconds later, 5 wood are in the storehouse", async () => {
+    await expect(storehouse.getByRole("list", { name: "In the storehouse" })).toContainText(
+      "Wood 5/100",
+      { timeout: 90_000 },
+    );
+  });
+});

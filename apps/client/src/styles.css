@@ -270,6 +270,27 @@ button:disabled {
   font-style: italic;
 }
 
+.villagers li.villager {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.villagers .name {
+  font-weight: bold;
+}
+
+.villagers .villager-status {
+  font-size: 0.85rem;
+  font-style: italic;
+  color: var(--wood-dark);
+}
+
+.villagers select {
+  font: inherit;
+  font-size: 0.85rem;
+  padding: 0.1rem 0.25rem;
+}
+
 .visually-hidden {
   position: absolute;
   width: 1px;
