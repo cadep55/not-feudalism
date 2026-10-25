@@ -752,7 +752,7 @@ class WorldScene extends Phaser.Scene {
 const BUILDING_STYLES: Record<Building["kind"], { fill: number; outline: number; label: string }> =
   {
     storehouse: { fill: 0x7a4f2a, outline: 0x3d2510, label: "Storehouse" },
-    house: { fill: 0xa0472f, outline: 0x5c2414, label: "House" },
+    house: { fill: 0x7b4fa0, outline: 0x3f2356, label: "House" },
   };
 
 /** Simple shapes per kind until we have pixel art. */
