@@ -11,6 +11,7 @@ import {
   approachTile,
   buildingAt,
   buildingsIn,
+  drawnBuildingsKey,
   facingToward,
   isBeside,
   readyAtBuilding,
@@ -47,6 +48,22 @@ describe("buildingsIn and buildingAt", () => {
     expect(buildingAt(BUILDINGS, { x: 17, y: 8 }, "heartland")).toBeNull();
     expect(buildingAt(BUILDINGS, { x: 14, y: 9 }, "heartland")).toBeNull();
     expect(buildingAt(BUILDINGS, { x: 15, y: 8 }, "nowhere")).toBeNull();
+  });
+});
+
+describe("drawnBuildingsKey", () => {
+  const house = buildingOn(20, 13);
+
+  it("changes when a building finishes going up, so it's redrawn solid", () => {
+    const goingUp = drawnBuildingsKey(BUILDINGS, house);
+    const standing = drawnBuildingsKey([...BUILDINGS, house], null);
+    expect(standing).not.toBe(goingUp);
+  });
+
+  it("changes when a building comes down, and stays put when nothing changed", () => {
+    const comingDown = drawnBuildingsKey(BUILDINGS, house);
+    expect(drawnBuildingsKey(BUILDINGS, null)).not.toBe(comingDown);
+    expect(drawnBuildingsKey(BUILDINGS, house)).toBe(comingDown);
   });
 });
 
