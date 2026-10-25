@@ -1,4 +1,13 @@
-import type { Building, CharacterState, Direction, Field, Job, NodeId, Villager } from "@nf/shared";
+import type {
+  Building,
+  BuildingKind,
+  CharacterState,
+  Direction,
+  Field,
+  Job,
+  NodeId,
+  Villager,
+} from "@nf/shared";
 import { useEffect, useRef } from "react";
 import type { MoveOutcome, World } from "./createGame.ts";
 import type { Tile } from "./movement.ts";
@@ -21,6 +30,10 @@ type Props = {
   turn: (facing: Direction) => Promise<boolean>;
   /** Called once the character stands beside the storehouse, facing it. */
   openStorehouse: () => void;
+  /** The kind of building being placed, or null when not placing. */
+  placing: BuildingKind | null;
+  /** Called when the player clicks a free spot while placing. */
+  build: (kind: BuildingKind, x: number, y: number) => void;
 };
 
 /**
@@ -38,6 +51,8 @@ export function GameCanvas({
   startHarvest,
   turn,
   openStorehouse,
+  placing,
+  build,
 }: Props) {
   const parent = useRef<HTMLDivElement>(null);
   // The game is created once per character; it always calls the latest callbacks.
@@ -51,6 +66,10 @@ export function GameCanvas({
   turnTo.current = turn;
   const open = useRef(openStorehouse);
   open.current = openStorehouse;
+  const place = useRef(build);
+  place.current = build;
+  const latestPlacing = useRef(placing);
+  latestPlacing.current = placing;
   const latestJob = useRef(job);
   latestJob.current = job;
   const latestFields = useRef(fields);
@@ -77,7 +96,9 @@ export function GameCanvas({
         startHarvest: (fieldId) => harvest.current(fieldId),
         turn: (facing) => turnTo.current(facing),
         openStorehouse: () => open.current(),
+        build: (kind, x, y) => place.current(kind, x, y),
       });
+      world.current.setPlacing(latestPlacing.current);
     });
     return () => {
       cancelled = true;
@@ -101,6 +122,10 @@ export function GameCanvas({
   useEffect(() => {
     world.current?.setBuildings(buildings);
   }, [buildings]);
+
+  useEffect(() => {
+    world.current?.setPlacing(placing);
+  }, [placing]);
 
   return <div ref={parent} className="canvas" data-testid="game-canvas" />;
 }

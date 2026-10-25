@@ -14,7 +14,7 @@ import type { ItemId } from "../data/items.ts";
 import { RESOURCE_NODES } from "../data/resources.ts";
 import { VILLAGER_NAMES, VILLAGERS_PER_HOUSE } from "../data/villagers.ts";
 import { isRegionId, REGIONS } from "../data/world.ts";
-import type { GameState, Inventory, Villager } from "../game/state.ts";
+import type { CharacterState, GameState, Inventory, Villager } from "../game/state.ts";
 import { fail, ok, type RuleResult } from "../result.ts";
 import { buildingAt, buildingsOf, storehousesByDistance } from "./buildings.ts";
 import { addItems, hasItems, removeItems } from "./inventory.ts";
@@ -42,6 +42,11 @@ export type RemoveFailure =
   | "storehouse_not_empty"
   | "no_room_for_refund";
 
+/** What placement looks at: where the character is, and what's already on the map. */
+export type PlacementWorld = Pick<GameState, "buildings" | "fields"> & {
+  character: Pick<CharacterState, "region" | "x" | "y">;
+};
+
 /**
  * Why a building of this kind can't go with its top-left at (x, y), or null
  * when it can. The footprint and a clear tile on every side must be on the
@@ -49,7 +54,7 @@ export type RemoveFailure =
  * can't be standing on the footprint.
  */
 export function placementBlocked(
-  state: GameState,
+  state: PlacementWorld,
   kind: BuildingKind,
   x: number,
   y: number,

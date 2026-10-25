@@ -15,8 +15,8 @@ function memoryStorage(initial: Record<string, string> = {}) {
 describe("togglePanel", () => {
   it("closes an open panel and reopens it in its usual place", () => {
     const closed = togglePanel(PANEL_IDS, "crafting");
-    expect(closed).toEqual(["inventory", "farming"]);
-    expect(togglePanel(closed, "crafting")).toEqual(["inventory", "crafting", "farming"]);
+    expect(closed).toEqual(["inventory", "farming", "build"]);
+    expect(togglePanel(closed, "crafting")).toEqual(["inventory", "crafting", "farming", "build"]);
   });
 
   it("can close every panel", () => {

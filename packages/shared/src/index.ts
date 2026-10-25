@@ -103,6 +103,7 @@ export { type ActionFailure, applyAction, settleWorld } from "./rules/actions.ts
 export {
   type BuildFailure,
   completeBuild,
+  type PlacementWorld,
   placementBlocked,
   type RemoveFailure,
   startBuild,

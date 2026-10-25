@@ -1,4 +1,5 @@
 import {
+  type BuildingKind,
   type CharacterState,
   type Direction,
   FIELD_GROW_MS,
@@ -36,6 +37,8 @@ const canvas = vi.hoisted(() => ({
     startHarvest: (fieldId: string) => void | Promise<void>;
     turn: (facing: Direction) => Promise<boolean>;
     openStorehouse: () => void;
+    placing: BuildingKind | null;
+    build: (kind: BuildingKind, x: number, y: number) => void | Promise<void>;
   },
 }));
 vi.mock("../game/GameCanvas.tsx", () => ({
@@ -812,5 +815,64 @@ describe("GameScreen villagers", () => {
       await vi.advanceTimersByTimeAsync(5 * 60_000);
     });
     expect(api.getState).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("GameScreen building", () => {
+  const WOOD: GameState = { ...ALICE_STATE, inventory: { wood: 5 } };
+
+  it("Build places on the map: the canvas gets placement mode, then sends building.build", async () => {
+    const started: GameState = {
+      ...ALICE_STATE,
+      job: {
+        kind: "build",
+        building: { ...STARTING_HOUSE, id: "house_1", x: 20, y: 13 },
+        startedAt: Date.now(),
+        completesAt: Date.now() + 10_000,
+      },
+    };
+    const api = fakeApi({
+      getState: vi.fn(async () => ({ ok: true as const, value: WOOD })),
+      sendAction: vi.fn(async () => ({ ok: true as const, value: started })),
+    });
+    await renderReady(api);
+    await userEvent.click(screen.getByRole("button", { name: "Build House" }));
+    expect(canvas.props?.placing).toBe("house");
+
+    await act(async () => canvas.props?.build("house", 20, 13));
+
+    expect(api.sendAction).toHaveBeenCalledWith({
+      type: "building.build",
+      payload: { kind: "house", x: 20, y: 13 },
+    });
+    expect(canvas.props?.placing).toBeNull();
+    expect(screen.getByText("Building a house…")).toBeInTheDocument();
+  });
+
+  it("Esc leaves placement mode", async () => {
+    const api = fakeApi({ getState: vi.fn(async () => ({ ok: true as const, value: WOOD })) });
+    await renderReady(api);
+    await userEvent.click(screen.getByRole("button", { name: "Build House" }));
+    await userEvent.keyboard("{Escape}");
+    expect(canvas.props?.placing).toBeNull();
+  });
+
+  it("Remove sends building.remove, and explains a refusal", async () => {
+    const second = { ...STARTING_HOUSE, id: "house_2", x: 20, y: 13 };
+    const twoHouses: GameState = { ...ALICE_STATE, buildings: [...ALICE_STATE.buildings, second] };
+    const api = fakeApi({
+      getState: vi.fn(async () => ({ ok: true as const, value: twoHouses })),
+      sendAction: vi.fn(async () => ({
+        ok: false as const,
+        reason: "no_room_for_refund" as const,
+      })),
+    });
+    await renderReady(api);
+    await userEvent.click(screen.getByRole("button", { name: "Remove House at 20,13" }));
+    expect(api.sendAction).toHaveBeenCalledWith({
+      type: "building.remove",
+      payload: { buildingId: "house_2" },
+    });
+    expect(screen.getByRole("alert")).toHaveTextContent("There's no room for the refund.");
   });
 });
