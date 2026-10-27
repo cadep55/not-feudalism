@@ -70,7 +70,8 @@ pnpm dev              # start Postgres (Docker), migrate, then server + client w
 pnpm check            # lint + typecheck + unit tests; must pass before every PR
 pnpm test             # unit tests (no database needed)
 pnpm test:integration # integration tests (*.int.test.ts) against Postgres; run pnpm db:up first
-pnpm test:e2e         # Playwright in a real browser against pnpm dev (first time: pnpm --filter @nf/e2e exec playwright install chromium)
+pnpm test:e2e         # all Playwright specs in a real browser against pnpm dev (first time: pnpm --filter @nf/e2e exec playwright install chromium)
+pnpm test:e2e world   # only the specs whose file name matches (e2e/tests/world.spec.ts): run the ones your change touches
 pnpm typecheck        # TypeScript in every package
 pnpm lint             # Biome lint + format check
 pnpm format           # Biome auto-fix: format, organise imports, safe lint fixes
@@ -108,7 +109,7 @@ These are non-negotiable. A PR that breaks one gets sent back.
 2. **Branch from up-to-date `main`:** `git switch main && git pull && git switch -c feat/<issue-number>-short-name` (prefixes: `feat/`, `fix/`, `chore/`, `docs/`, `test/`, `refactor/`).
 3. **Read before writing.** Look at neighbouring code and match its patterns. Check `docs/` for the relevant rules.
 4. **Make the change with its tests.**
-5. **Run `pnpm check`** (and `pnpm test:e2e` if you touched a player-facing flow) until it's green.
+5. **Run `pnpm check`** until it's green. If you touched a player-facing flow, also run the e2e specs for that area (`pnpm test:e2e <area>`, one spec per area in `e2e/tests/`). CI runs the whole e2e suite on every PR.
 6. **Commit** using Conventional Commits: `feat(economy): add bakery recipe`, `fix(server): reject negative trade quantity`.
 7. **Open a PR** using the template. Link the issue (`Closes #12`), describe what changed and how you tested it, and include a screenshot or GIF for visual changes.
 8. **Get one review from the other owner** (human). CI must be green. Squash-merge.
