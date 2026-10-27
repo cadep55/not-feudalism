@@ -51,7 +51,7 @@ How we write code, use git, test, and keep the project safe. [AGENTS.md](../AGEN
 | **Property** | fast-check (inside Vitest) | Economy invariants: gold and items are never created or destroyed by a trade; prices stay positive; crafting never yields negative stock | Fast | CI |
 | **Data** | Vitest | Every recipe uses items that exist, no circular recipes, every rank is reachable, all IDs unique | Fast | CI |
 | **Integration** | Vitest + `@colyseus/testing` + real Postgres | Room handlers and services end-to-end against a real DB: join, send intent, assert state and DB rows | Seconds | CI (Postgres service container) |
-| **End-to-end** | Playwright | Real browser flows: sign up → gather → craft → sell. **Two-player tests** with two browser contexts: trade between players, chat, see each other move | Tens of seconds | CI on PRs, nightly full run |
+| **End-to-end** | Playwright | Real browser flows, one spec per area (`e2e/tests/<area>.spec.ts`): sign up → gather → craft → sell. **Two-player tests** with two browser contexts: trade between players, chat, see each other move | Tens of seconds | Locally, just the areas a change touches (`pnpm test:e2e <area>`); the full suite in CI on every PR |
 | **Load** | Colyseus loadtest or k6 (later) | N simulated players in a region: message latency and server CPU | Minutes | Before each public playtest |
 
 ### Rules
@@ -59,6 +59,7 @@ How we write code, use git, test, and keep the project safe. [AGENTS.md](../AGEN
 - **Test behaviour, not implementation.** Assert on outcomes ("player has 1 sword and 3 less iron"), not on which functions were called.
 - **Deterministic tests:** inject `now` and a seeded RNG. No real timers. Use `vi.useFakeTimers()` where a framework needs them. No `sleep` in tests, except Playwright's auto-waiting.
 - **Integration tests use a real database,** reset between tests (each test inside a rolled-back transaction, or truncate tables). Don't mock the database.
+- **Keep e2e tests short.** Don't wait out long game timers in a browser (a villager's minute-long trip, a 5-minute field): check the flow in e2e and the timing in an integration test with a fake clock.
 - **Fixtures and builders:** `makeCharacter({ gold: 100 })` helpers in `packages/shared/test/builders.ts`, so tests stay short.
 - **Coverage goals:** `packages/shared` ≥ 90% lines (CI enforces it); server services ≥ 70%; the UI is covered mostly by e2e.
 - **Every bug fix starts with a failing test.**
