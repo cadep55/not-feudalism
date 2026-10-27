@@ -6,6 +6,7 @@ import {
   type LoginRequest,
   PROTOCOL_VERSION,
   type SignUpRequest,
+  type WorldOverview,
 } from "@nf/shared";
 
 /** Mirrors the server's SessionPlayer (apps/server/src/auth/sessions.ts). */
@@ -61,6 +62,11 @@ export function createApi(serverUrl: string, fetchImpl: typeof fetch = fetch) {
       return result.ok ? { ok: true, value: result.value.protocol === PROTOCOL_VERSION } : result;
     },
     getState: async () => unwrapState(await request<{ state: GameState }>("/game/state")),
+    /** Who calls each section home, for the world view. */
+    getWorld: async (): Promise<ApiResult<WorldOverview>> => {
+      const result = await request<{ world: WorldOverview }>("/game/world");
+      return result.ok ? { ok: true, value: result.value.world } : result;
+    },
     /**
      * Sends one action. Pass the same requestId when retrying after a network
      * error, so the server applies it at most once.

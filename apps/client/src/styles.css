@@ -440,6 +440,69 @@ button:disabled {
   width: 100%;
 }
 
+.map-overlay.world-overlay {
+  width: min(560px, calc(100% - 16px));
+}
+
+/* The world view: each section a rectangle on the world grid, shaped like a section. */
+.world-grid {
+  list-style: none;
+  margin: 0.4rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.world-section {
+  position: relative;
+  aspect-ratio: 25 / 18;
+  overflow: hidden;
+  background: #52863f;
+  border: 2px solid var(--wood-dark);
+  border-radius: 3px;
+  color: var(--parchment);
+  font-size: 0.7rem;
+  line-height: 1.2;
+  padding: 3px 4px;
+  display: flex;
+  flex-direction: column;
+}
+
+.world-section.home {
+  border-color: #c9a227;
+  border-width: 3px;
+}
+
+.world-section.here {
+  outline: 2px dashed var(--parchment);
+  outline-offset: -5px;
+}
+
+.world-section.unreachable {
+  background: #3f6b33;
+}
+
+.world-water {
+  position: absolute;
+  background: #3474a8;
+}
+
+.world-name,
+.world-owner,
+.world-here {
+  position: relative;
+  text-shadow: 0 1px 2px #000a;
+}
+
+.world-name {
+  font-weight: bold;
+}
+
+.world-here {
+  margin-top: auto;
+  font-style: italic;
+}
+
 .overlay-close {
   position: absolute;
   top: 6px;

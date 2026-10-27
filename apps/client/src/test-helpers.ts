@@ -40,6 +40,10 @@ export function fakeApi(overrides: Partial<Api> = {}): Api {
     me: vi.fn(async () => ({ ok: false as const, reason: "not_authenticated" as const })),
     checkProtocol: vi.fn(async () => ({ ok: true as const, value: true })),
     getState: vi.fn(async () => ({ ok: true as const, value: ALICE_STATE })),
+    getWorld: vi.fn(async () => ({
+      ok: true as const,
+      value: { home: "heartland", here: "heartland", owners: { heartland: "Alice" } },
+    })),
     sendAction: vi.fn(async () => ({ ok: true as const, value: ALICE_STATE })),
     ...overrides,
   };

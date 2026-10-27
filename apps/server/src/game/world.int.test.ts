@@ -1,7 +1,13 @@
 import { randomUUID } from "node:crypto";
 import type { AddressInfo } from "node:net";
 import { buildings, characters, createDb, readDbEnv, runMigrations } from "@nf/db";
-import { type GameState, REGIONS, type RegionId, TRAVEL_DURATION_MS } from "@nf/shared";
+import {
+  type GameState,
+  REGIONS,
+  type RegionId,
+  TRAVEL_DURATION_MS,
+  type WorldOverview,
+} from "@nf/shared";
 import { eq } from "drizzle-orm";
 import express from "express";
 import { pino } from "pino";
@@ -185,5 +191,20 @@ describe("joining the shared world", () => {
     // At home there's nobody else to see.
     const away = await act(traveller, "travel.start", {});
     expect(await away.json()).toEqual({ error: "not_at_travel_zone" });
+  });
+
+  it("tells the world view who calls each section home", async () => {
+    const picks: RegionId[] = ["heartland", "east_coast"];
+    const call = await startApp({ name: oneWorld(), pickSection: () => picks.shift() ?? "south" });
+    const me = await signUp(call);
+    const neighbour = await signUp(call);
+    const { player } = (await neighbour.clone().json()) as { player: { characterName: string } };
+    const res = await call("/game/world", { cookie: cookieOf(me) });
+    expect(res.status).toBe(200);
+    const { world } = (await res.json()) as { world: WorldOverview };
+    expect(world.home).toBe("heartland");
+    expect(world.here).toBe("heartland");
+    expect(world.owners.east_coast).toBe(player.characterName);
+    expect(Object.keys(world.owners).sort()).toEqual(["east_coast", "heartland"]);
   });
 });

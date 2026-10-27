@@ -320,4 +320,14 @@ test("a player walks onto a travel zone and arrives in the next section", async 
       .toBe(zone.to);
     await expect(page.locator("canvas")).toBeVisible();
   });
+
+  await test.step("the World view shows the 10 sections, home and where the player is", async () => {
+    await page.getByRole("button", { name: "World" }).click();
+    const sections = page.getByRole("list", { name: "Sections" }).getByRole("listitem");
+    await expect(sections).toHaveCount(10);
+    await expect(sections.filter({ hasText: "Your home" })).toHaveCount(1);
+    await expect(sections.filter({ hasText: "You are here" })).toHaveCount(1);
+    await page.getByRole("button", { name: "Close world" }).click();
+    await expect(page.getByRole("list", { name: "Sections" })).toHaveCount(0);
+  });
 });

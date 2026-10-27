@@ -10,6 +10,7 @@ import {
   REGIONS,
   type RecipeId,
   type VillagerJob,
+  type WorldOverview,
 } from "@nf/shared";
 import { type CSSProperties, useCallback, useEffect, useState } from "react";
 import type { MoveOutcome } from "../game/createGame.ts";
@@ -33,6 +34,7 @@ import {
 } from "./panels.ts";
 import { StorehouseOverlay } from "./StorehouseOverlay.tsx";
 import { VillagersMenu } from "./VillagersMenu.tsx";
+import { WorldView } from "./WorldView.tsx";
 
 /** How long a refusal message stays on screen. */
 export const NOTICE_MS = 2_500;
@@ -53,6 +55,8 @@ export function GameScreen({ api, player, onLogOut }: Props) {
   const [notice, setNotice] = useState<string | null>(null);
   const [storehouseOpen, setStorehouseOpen] = useState(false);
   const [placing, setPlacing] = useState<BuildingKind | null>(null);
+  // The world view: closed, open while loading (null), or open with what it shows.
+  const [world, setWorld] = useState<WorldOverview | null | "closed">("closed");
   const [openPanels, setOpenPanels] = useState<PanelId[]>(() => loadOpenPanels(browserStorage()));
   useEffect(() => saveOpenPanels(browserStorage(), openPanels), [openPanels]);
   const toggle = useCallback((id: PanelId) => setOpenPanels((open) => togglePanel(open, id)), []);
@@ -258,6 +262,22 @@ export function GameScreen({ api, player, onLogOut }: Props) {
     }
   }, [api, showState]);
 
+  // The World button opens the zoomed-out view (or closes it); it loads who lives where each time.
+  const toggleWorld = useCallback(async () => {
+    if (world !== "closed") {
+      setWorld("closed");
+      return;
+    }
+    setWorld(null);
+    const result = await api.getWorld();
+    if (result.ok) setWorld((now) => (now === "closed" ? now : result.value));
+    else {
+      setWorld("closed");
+      setNotice(FAILURE_MESSAGES[result.reason]);
+    }
+  }, [api, world]);
+  const closeWorld = useCallback(() => setWorld("closed"), []);
+
   // Placement mode ends with a placed building, the Cancel button, or Esc.
   useEffect(() => {
     if (!placing) return;
@@ -342,6 +362,7 @@ export function GameScreen({ api, player, onLogOut }: Props) {
                   onClose={closeStorehouse}
                 />
               )}
+              {world !== "closed" && <WorldView world={world} onClose={closeWorld} />}
             </div>
           </div>
           {notice && (
@@ -356,6 +377,11 @@ export function GameScreen({ api, player, onLogOut }: Props) {
           <PanelBar
             open={openPanels}
             onToggle={toggle}
+            extra={
+              <button type="button" aria-pressed={world !== "closed"} onClick={toggleWorld}>
+                World
+              </button>
+            }
             panels={{
               inventory: <InventoryPanel inventory={load.state.inventory} job={load.state.job} />,
               crafting: (
