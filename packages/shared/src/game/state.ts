@@ -2,6 +2,7 @@ import type { Building } from "../data/buildings.ts";
 import type { ItemId } from "../data/items.ts";
 import type { RecipeId } from "../data/recipes.ts";
 import type { NodeId } from "../data/resources.ts";
+import type { RegionId } from "../data/world.ts";
 import type { Direction } from "./direction.ts";
 
 /**
@@ -71,7 +72,17 @@ export type RemoveJob = {
   completesAt: number;
 };
 
-export type Job = GatherJob | HarvestJob | CraftJob | BuildJob | RemoveJob;
+/** Travelling to the next section from a travel zone; the character arrives when it completes. */
+export type TravelJob = {
+  kind: "travel";
+  to: RegionId;
+  /** Where they arrive in the next section. */
+  arrive: { x: number; y: number };
+  startedAt: number;
+  completesAt: number;
+};
+
+export type Job = GatherJob | HarvestJob | CraftJob | BuildJob | RemoveJob | TravelJob;
 
 /**
  * A wheat field in the character's world. Fields run out and new ones can be
@@ -114,6 +125,13 @@ export type Villager = {
   task: VillagerTask | null;
 };
 
+/** Another player's base, seen when standing in their section. Look, don't touch. */
+export type OtherBase = {
+  characterName: string;
+  buildings: Building[];
+  fields: Field[];
+};
+
 export type GameState = {
   character: CharacterState;
   /** What the character carries (at most CARRY_LIMIT of each). */
@@ -131,4 +149,6 @@ export type GameState = {
   villagers: Villager[];
   /** The character's job in progress, or null when idle. */
   job: Job | null;
+  /** Other players' bases in the section the character stands in (empty at home). */
+  others: OtherBase[];
 };

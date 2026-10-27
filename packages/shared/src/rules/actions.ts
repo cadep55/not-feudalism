@@ -8,6 +8,7 @@ import { startGather } from "./gather.ts";
 import { resolveJob } from "./jobs.ts";
 import { moveTo } from "./move.ts";
 import { type StorehouseFailure, storeItems, takeItems } from "./storehouse.ts";
+import { startTravel } from "./travel.ts";
 import { assignVillager, settleVillagers } from "./villagers.ts";
 
 /** Every reason a game rule may refuse an action. */
@@ -15,6 +16,7 @@ export type ActionFailure =
   | "out_of_bounds"
   | "moved_too_fast"
   | "water"
+  | "not_at_travel_zone"
   | "too_far_away"
   | "not_facing"
   | "busy"
@@ -47,8 +49,8 @@ export function applyAction(
       const moved = moveTo(current.character, action.payload, now);
       if (!moved.ok) return moved;
       const stayed = moved.value.x === current.character.x && moved.value.y === current.character.y;
-      // Walking away cancels an unfinished gather or harvest; crafting carries on.
-      const cancelled = !stayed && isTiedToSpot(current);
+      // Walking away cancels an unfinished gather, harvest or trip; crafting carries on.
+      const cancelled = !stayed && (isTiedToSpot(current) || current.job?.kind === "travel");
       return ok({ ...current, character: moved.value, job: cancelled ? null : current.job });
     }
     case "turn": {
@@ -79,6 +81,8 @@ export function applyAction(
       return startBuild(current, action.payload.kind, action.payload.x, action.payload.y, now);
     case "building.remove":
       return startRemove(current, action.payload.buildingId, now);
+    case "travel.start":
+      return startTravel(current, now);
   }
 }
 

@@ -59,6 +59,10 @@ export type BuildingBuild = z.infer<typeof BuildingBuild>;
 export const BuildingRemove = z.strictObject({ buildingId: z.string().min(1).max(64) });
 export type BuildingRemove = z.infer<typeof BuildingRemove>;
 
+/** Intent: travel to the next section from the travel zone the character stands on. */
+export const TravelStart = z.strictObject({});
+export type TravelStart = z.infer<typeof TravelStart>;
+
 /** Intent: say something in the current region's chat. */
 export const ChatSend = z.strictObject({
   text: z.string().trim().min(1).max(LIMITS.chatMaxLength),

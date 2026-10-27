@@ -21,6 +21,7 @@ export const ALICE_STATE: GameState = {
   fields: [],
   villagers: [],
   job: null,
+  others: [],
 };
 
 export const ALICE: Player = {

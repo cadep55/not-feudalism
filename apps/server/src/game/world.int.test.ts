@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import type { AddressInfo } from "node:net";
 import { buildings, characters, createDb, readDbEnv, runMigrations } from "@nf/db";
-import { type GameState, REGIONS, type RegionId } from "@nf/shared";
+import { type GameState, REGIONS, type RegionId, TRAVEL_DURATION_MS } from "@nf/shared";
 import { eq } from "drizzle-orm";
 import express from "express";
 import { pino } from "pino";
@@ -129,5 +129,61 @@ describe("joining the shared world", () => {
     expect(rows.map((r) => r.region)).toEqual(["south", "south"]);
     const mine = await state(call, cookieOf(res));
     expect(mine.character).toMatchObject({ region: "south", homeRegion: "south" });
+  });
+
+  it("travels to the next section after 5 seconds, and sees the neighbour's base there", async () => {
+    let clock = Date.now() + 60 * 60 * 1000;
+    const picks: RegionId[] = ["heartland", "north"];
+    const app = express();
+    configureHttp(app, {
+      clientOrigin: "http://localhost:5173",
+      logger: pino({ level: "silent" }),
+      checkDatabase: async () => {},
+      auth: {
+        db,
+        secureCookies: false,
+        rateLimitPerWindow: 1_000,
+        world: { name: oneWorld(), pickSection: () => picks.shift() ?? "south" },
+      },
+      game: { db, actionsPerMinute: 1_000, now: () => new Date(clock) },
+    });
+    const server = app.listen(0);
+    servers.push(server);
+    await new Promise<void>((resolve) => server.once("listening", resolve));
+    const { port } = server.address() as AddressInfo;
+    const call: Call = (path, options = {}) =>
+      fetch(`http://127.0.0.1:${port}${path}`, {
+        method: options.body ? "POST" : "GET",
+        headers: {
+          ...(options.body ? { "content-type": "application/json" } : {}),
+          ...(options.cookie ? { cookie: options.cookie } : {}),
+        },
+        ...(options.body ? { body: JSON.stringify(options.body) } : {}),
+      });
+    const act = (cookie: string, type: string, payload: unknown) =>
+      call("/game/actions", { cookie, body: { requestId: randomUUID(), type, payload } });
+
+    const traveller = cookieOf(await signUp(call));
+    await signUp(call); // The neighbour, at home in north.
+
+    expect((await act(traveller, "move.to", { x: 12, y: 0 })).status).toBe(200);
+    const started = await act(traveller, "travel.start", {});
+    expect(started.status).toBe(200);
+
+    clock += TRAVEL_DURATION_MS;
+    const arrived = await state(call, traveller);
+    expect(arrived.character).toMatchObject({
+      region: "north",
+      homeRegion: "heartland",
+      x: 12,
+      y: 16,
+    });
+    expect(arrived.others).toHaveLength(1);
+    expect(arrived.others[0]?.buildings.map((b) => b.kind).sort()).toEqual(["house", "storehouse"]);
+    expect(arrived.others[0]?.buildings.every((b) => b.region === "north")).toBe(true);
+
+    // At home there's nobody else to see.
+    const away = await act(traveller, "travel.start", {});
+    expect(await away.json()).toEqual({ error: "not_at_travel_zone" });
   });
 });

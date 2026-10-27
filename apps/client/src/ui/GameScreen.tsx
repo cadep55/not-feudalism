@@ -247,6 +247,17 @@ export function GameScreen({ api, player, onLogOut }: Props) {
   // Walking up to the storehouse (and facing it) opens it over the map.
   const openStorehouse = useCallback(() => setStorehouseOpen(true), []);
 
+  // Standing on a travel zone starts a 5-second trip; the next section loads when the job ends.
+  const startTravel = useCallback(async () => {
+    const result = await api.sendAction({ type: "travel.start", payload: {} });
+    if (result.ok) {
+      showState(result.value);
+      setNotice(null);
+    } else {
+      setNotice(FAILURE_MESSAGES[result.reason]);
+    }
+  }, [api, showState]);
+
   // Placement mode ends with a placed building, the Cancel button, or Esc.
   useEffect(() => {
     if (!placing) return;
@@ -312,6 +323,7 @@ export function GameScreen({ api, player, onLogOut }: Props) {
                 fields={load.state.fields}
                 villagers={load.state.villagers}
                 buildings={load.state.buildings}
+                others={load.state.others}
                 sendPosition={sendPosition}
                 startGather={startGather}
                 startHarvest={startHarvest}
@@ -319,6 +331,7 @@ export function GameScreen({ api, player, onLogOut }: Props) {
                 openStorehouse={openStorehouse}
                 placing={placing}
                 build={build}
+                startTravel={startTravel}
               />
               <VillagersMenu villagers={load.state.villagers} onAssign={assignVillager} />
               {storehouseOpen && (

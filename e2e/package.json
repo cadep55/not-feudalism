@@ -11,6 +11,7 @@
   "devDependencies": {
     "@nf/config": "workspace:*",
     "@nf/db": "workspace:*",
+    "@nf/shared": "workspace:*",
     "@playwright/test": "1.64.0",
     "@types/node": "24.19.2",
     "drizzle-orm": "0.45.4"

@@ -27,6 +27,7 @@ const state: GameState = {
   fields: [],
   villagers: [],
   job: null,
+  others: [],
 };
 
 const gathering: GameState = {

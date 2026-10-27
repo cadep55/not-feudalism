@@ -8,6 +8,7 @@ import {
   GatherStart,
   MoveTo,
   StorehouseTransfer,
+  TravelStart,
   Turn,
   VillagerAssign,
 } from "./messages.ts";
@@ -50,6 +51,7 @@ export const ActionRequest = z.discriminatedUnion("type", [
     type: z.literal("building.remove"),
     payload: BuildingRemove,
   }),
+  z.strictObject({ requestId: z.uuid(), type: z.literal("travel.start"), payload: TravelStart }),
 ]);
 export type ActionRequest = z.infer<typeof ActionRequest>;
 

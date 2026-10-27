@@ -10,10 +10,12 @@ import {
   isWater,
   type Job,
   type NodeId,
+  type OtherBase,
   placementBlocked,
   REGIONS,
   RESOURCE_NODES,
   type ResourceNode,
+  travelZoneAt,
   type Villager,
   type VillagerTask,
   villagerActivity,
@@ -70,6 +72,10 @@ const GHOST_BLOCKED = 0xc0392b;
 const GHOST_ALPHA = 0.45;
 /** A building going up or coming down is drawn see-through. */
 const WORKING_ALPHA = 0.45;
+/** The faint rectangle over a travel zone while the character stands on it. */
+const ZONE_COLOR = 0xf5e9c8;
+const ZONE_FILL_ALPHA = 0.18;
+const ZONE_LINE_ALPHA = 0.6;
 
 /**
  * What the server said about a position update: the facing it recorded (null
@@ -89,6 +95,8 @@ export type WorldOptions = {
   villagers: Villager[];
   /** The buildings when the game starts; later changes arrive through World.setBuildings. */
   buildings: Building[];
+  /** Other players' bases in this section; later changes arrive through World.setOthers. */
+  others: OtherBase[];
   sendPosition: (tile: Tile) => Promise<MoveOutcome>;
   /** Asks the server to start gathering; the result comes back as a setJob call. */
   startGather: (nodeId: NodeId) => void;
@@ -100,6 +108,8 @@ export type WorldOptions = {
   openStorehouse: () => void;
   /** The player placed a building (top-left tile) while in placement mode. */
   build: (kind: BuildingKind, x: number, y: number) => void;
+  /** The character stands still on a travel zone: ask the server to travel. */
+  startTravel: () => void;
 };
 
 /** What the React side holds on to: tell the world about job and field changes, tear it down. */
@@ -108,6 +118,7 @@ export type World = {
   setFields: (fields: Field[]) => void;
   setVillagers: (villagers: Villager[]) => void;
   setBuildings: (buildings: Building[]) => void;
+  setOthers: (others: OtherBase[]) => void;
   /** Enters placement mode for a kind of building, or leaves it (null). */
   setPlacing: (kind: BuildingKind | null) => void;
   destroy: () => void;
@@ -157,6 +168,10 @@ class WorldScene extends Phaser.Scene {
   private fieldLayer: Phaser.GameObjects.Container | null = null;
   private villagers: Villager[];
   private buildings: Building[];
+  private others: OtherBase[];
+  /** The travel zone tile a trip was last asked for, so it's asked once per visit. */
+  private travelAskedAt: string | null = null;
+  private zoneMarker!: Phaser.GameObjects.Graphics;
   /** What the building layer last drew; redrawn when this changes. */
   private drawnBuildings: string | null = null;
   private buildingLayer: Phaser.GameObjects.Container | null = null;
@@ -186,6 +201,12 @@ class WorldScene extends Phaser.Scene {
     this.fields = options.fields;
     this.villagers = options.villagers;
     this.buildings = options.buildings;
+    this.others = options.others;
+  }
+
+  /** The server's latest word on other players' bases here. Safe to call before the scene starts. */
+  setOthers(others: OtherBase[]) {
+    this.others = others;
   }
 
   /** The server's latest word on the buildings. Safe to call before the scene starts. */
@@ -244,6 +265,9 @@ class WorldScene extends Phaser.Scene {
     // Villagers walk over fields and buildings but below the player's character.
     this.villagerLayer = this.add.container(0, 0);
     this.drawVillagers();
+
+    // The faint rectangle over the travel zone the character stands on, under the character.
+    this.zoneMarker = this.add.graphics();
 
     // A faint chevron at the tile's edge marks the character's front.
     this.arrow = this.add.graphics();
@@ -381,6 +405,7 @@ class WorldScene extends Phaser.Scene {
       this.use(target);
     }
 
+    this.maybeTravel();
     this.drawProgress();
     this.drawGhost();
     this.drawBuildings();
@@ -485,7 +510,8 @@ class WorldScene extends Phaser.Scene {
     const layer = this.fieldLayer;
     if (!layer) return;
     const now = Date.now();
-    const shown = fieldsIn(this.fields, this.options.character.region).map((field) => ({
+    const all = [...this.fields, ...this.others.flatMap((o) => o.fields)];
+    const shown = fieldsIn(all, this.options.character.region).map((field) => ({
       field,
       growing: isGrowing(field, now),
       label: fieldLabel(field, now),
@@ -517,6 +543,41 @@ class WorldScene extends Phaser.Scene {
   private taskTarget(task: VillagerTask): Tile | null {
     if (task.kind === "gather") return RESOURCE_NODES[task.nodeId];
     return this.fieldById(task.fieldId);
+  }
+
+  /**
+   * Standing still on a travel zone (with the server agreeing where we stand)
+   * starts the trip, once per visit to the tile. Shows the zone's faint
+   * rectangle while on it.
+   */
+  private maybeTravel() {
+    const zone = travelZoneAt(this.options.character.region, this.position);
+    this.zoneMarker.clear();
+    if (!zone) {
+      this.travelAskedAt = null;
+      return;
+    }
+    const { tiles } = zone;
+    this.zoneMarker.fillStyle(ZONE_COLOR, ZONE_FILL_ALPHA);
+    this.zoneMarker.fillRect(
+      tiles.x * TILE,
+      tiles.y * TILE,
+      tiles.width * TILE,
+      tiles.height * TILE,
+    );
+    this.zoneMarker.lineStyle(2, ZONE_COLOR, ZONE_LINE_ALPHA);
+    this.zoneMarker.strokeRect(
+      tiles.x * TILE,
+      tiles.y * TILE,
+      tiles.width * TILE,
+      tiles.height * TILE,
+    );
+    const here = `${this.position.x},${this.position.y}`;
+    const settled =
+      !this.stepping && !this.inFlight && samePlace(this.position, this.lastSent) && !this.job;
+    if (!settled || this.travelAskedAt === here) return;
+    this.travelAskedAt = here;
+    this.options.startTravel();
   }
 
   /** Why a building can't go here, or null when it can (the same check the server makes). */
@@ -563,13 +624,21 @@ class WorldScene extends Phaser.Scene {
     const shown = buildingsIn(this.buildings, region);
     const working = this.job?.kind === "build" || this.job?.kind === "remove" ? this.job : null;
     const site = working?.building.region === region ? working.building : null;
-    const key = drawnBuildingsKey(shown, site);
+    const theirs = this.others.flatMap((o) =>
+      buildingsIn(o.buildings, region).map((b) => ({ ...b, id: `${o.characterName}:${b.id}` })),
+    );
+    const key = `${drawnBuildingsKey(shown, site)}|${drawnBuildingsKey(theirs, null)}`;
     if (key === this.drawnBuildings) return;
     this.drawnBuildings = key;
     layer.removeAll(true);
     const g = this.add.graphics();
     layer.add(g);
     for (const building of shown) layer.add(this.drawBuilding(g, building));
+    for (const other of this.others) {
+      for (const building of buildingsIn(other.buildings, region)) {
+        layer.add(this.drawBuilding(g, building, `${other.characterName}'s`));
+      }
+    }
     if (site) {
       const faded = this.add.graphics().setAlpha(WORKING_ALPHA);
       layer.add(faded);
@@ -654,8 +723,11 @@ class WorldScene extends Phaser.Scene {
     return sprite;
   }
 
-  /** A labelled square over the footprint until we have pixel art. Returns the label. */
-  private drawBuilding(g: Phaser.GameObjects.Graphics, building: Building) {
+  /**
+   * A labelled square over the footprint until we have pixel art. Another
+   * player's building is labelled with its owner. Returns the label.
+   */
+  private drawBuilding(g: Phaser.GameObjects.Graphics, building: Building, owner?: string) {
     const style = BUILDING_STYLES[building.kind];
     const left = building.x * TILE;
     const top = building.y * TILE;
@@ -666,7 +738,7 @@ class WorldScene extends Phaser.Scene {
     g.lineStyle(3, style.outline, 1);
     g.strokeRect(left + 2, top + 2, width - 4, height - 4);
     return this.add
-      .text(left + width / 2, top + height / 2, style.label, {
+      .text(left + width / 2, top + height / 2, owner ? `${owner}\n${style.label}` : style.label, {
         fontFamily: "Georgia, serif",
         fontSize: "11px",
         color: "#f5e9c8",
@@ -835,6 +907,7 @@ export function createGame(parent: HTMLElement, options: WorldOptions): World {
     setFields: (fields) => scene.setFields(fields),
     setVillagers: (villagers) => scene.setVillagers(villagers),
     setBuildings: (buildings) => scene.setBuildings(buildings),
+    setOthers: (others) => scene.setOthers(others),
     setPlacing: (kind) => scene.setPlacing(kind),
     destroy: () => {
       resizes.disconnect();

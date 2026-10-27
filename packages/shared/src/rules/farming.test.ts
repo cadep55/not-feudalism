@@ -48,6 +48,7 @@ function state(
     fields,
     villagers: [],
     job: null,
+    others: [],
   };
 }
 

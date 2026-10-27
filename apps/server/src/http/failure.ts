@@ -30,6 +30,7 @@ const STATUS: Record<FailureReason, number> = {
   world_full: 409,
   moved_too_fast: 422,
   water: 422,
+  not_at_travel_zone: 422,
   too_far_away: 422,
   not_facing: 422,
   busy: 409,

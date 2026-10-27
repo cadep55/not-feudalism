@@ -37,6 +37,7 @@ function stateAt(
     fields: [],
     villagers: [],
     job: null,
+    others: [],
     ...overrides,
   };
 }

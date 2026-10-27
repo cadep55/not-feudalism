@@ -20,11 +20,13 @@ import {
   isItemId,
   isNodeId,
   isRecipeId,
+  isRegionId,
   type Job,
+  type OtherBase,
   type Villager,
   type VillagerTask,
 } from "@nf/shared";
-import { and, eq, isNull } from "drizzle-orm";
+import { and, eq, isNull, ne } from "drizzle-orm";
 
 // Moves game state between Postgres rows and the plain objects the shared rules use.
 // Timestamps are Date in the database and epoch milliseconds in game state.
@@ -49,6 +51,7 @@ export async function loadStateForUpdate(db: DbExecutor, characterId: string): P
     .orderBy(buildings.createdAt, buildings.buildingId);
   const world = buildingRows.flatMap((row) => toBuilding(row) ?? []);
   const storage = await loadStorage(db, characterId, world);
+  const others = await loadOthers(db, row.id, row.region);
   const fieldRows = await db.select().from(fields).where(eq(fields.characterId, characterId));
   const villagerRows = await db
     .select()
@@ -97,7 +100,52 @@ export async function loadStateForUpdate(db: DbExecutor, characterId: string): P
       task: (row.task as VillagerTask | null) ?? null,
     })),
     job,
+    others,
   };
+}
+
+/**
+ * The bases of other players whose home is the section this character stands
+ * in (one per section for now), so they can be seen there. Not locked: only
+ * looked at.
+ */
+export async function loadOthers(
+  db: DbExecutor,
+  characterId: string,
+  region: string,
+): Promise<OtherBase[]> {
+  const [me] = await db
+    .select({ id: characters.id, worldId: characters.worldId })
+    .from(characters)
+    .where(eq(characters.id, characterId));
+  if (!me?.worldId) return [];
+  const owners = await db
+    .select({ id: characters.id, name: characters.name })
+    .from(characters)
+    .where(
+      and(
+        eq(characters.worldId, me.worldId),
+        eq(characters.homeRegion, region),
+        ne(characters.id, me.id),
+      ),
+    );
+  const bases: OtherBase[] = [];
+  for (const owner of owners) {
+    const buildingRows = await db
+      .select()
+      .from(buildings)
+      .where(and(eq(buildings.characterId, owner.id), eq(buildings.region, region)));
+    const fieldRows = await db
+      .select()
+      .from(fields)
+      .where(and(eq(fields.characterId, owner.id), eq(fields.region, region)));
+    bases.push({
+      characterName: owner.name,
+      buildings: buildingRows.flatMap((b) => toBuilding(b) ?? []),
+      fields: fieldRows.map(toField),
+    });
+  }
+  return bases;
 }
 
 function toField(row: typeof fields.$inferSelect): Field {
@@ -367,6 +415,17 @@ function toJob(row: typeof jobs.$inferSelect): Job | null {
     const building = toPayloadBuilding(payload.building);
     return building ? { kind: row.kind, building, ...times } : null;
   }
+  if (row.kind === "travel") {
+    const { to, arrive } = payload as { to?: unknown; arrive?: { x?: unknown; y?: unknown } };
+    const at = arrive && Number.isInteger(arrive.x) && Number.isInteger(arrive.y);
+    if (typeof to !== "string" || !isRegionId(to) || !at) return null;
+    return {
+      kind: "travel",
+      to,
+      arrive: { x: arrive.x as number, y: arrive.y as number },
+      ...times,
+    };
+  }
   if (row.kind === "gather" && typeof payload.nodeId === "string" && isNodeId(payload.nodeId)) {
     return { kind: "gather", nodeId: payload.nodeId, ...times };
   }
@@ -389,6 +448,8 @@ function jobPayload(job: Job): Record<string, unknown> {
     case "build":
     case "remove":
       return { building: job.building };
+    case "travel":
+      return { to: job.to, arrive: job.arrive };
     case "gather":
       return { nodeId: job.nodeId };
     case "harvest":

@@ -43,8 +43,15 @@ The section names, the coastline and island shapes, and where resources stand ar
 
 **Tests:** integration tests sign up with `TEST_WORLD` (`apps/server/src/test-world.ts`): a brand-new world per sign-up, starting in heartland. The e2e tests play in the dev server's main world and delete the players they create after each test (`e2e/tests/cleanup.ts`).
 
+## Travel
+
+- Standing still on a travel zone (with the server agreeing where you stand) starts a **5-second trip** (`travel.start`, a timed job like gathering). A faint rectangle shows over the zone while you're on it.
+- **Stepping off cancels** the trip; turning doesn't. Nothing else can be going on (busy otherwise).
+- You arrive **one tile inside** the next section, across from where you left, so you don't land on its zone and head straight back. The map reloads for the new section.
+- **Other players' bases:** in someone else's section you see their buildings (labelled with their name) and fields. You can't use them.
+- **Travel zones stay open:** no building's footprint or clear ring may cover a zone tile.
+
 ## Not yet
 
-- Travel between sections (#52)
 - The world view (#53)
 - Boats and docks (#48)

@@ -6,6 +6,7 @@ import type {
   Field,
   Job,
   NodeId,
+  OtherBase,
   Villager,
 } from "@nf/shared";
 import { useEffect, useRef } from "react";
@@ -22,6 +23,8 @@ type Props = {
   villagers: Villager[];
   /** The houses and storehouses; the world draws them and redraws when they change. */
   buildings: Building[];
+  /** Other players' bases in this section, drawn for looking at. */
+  others: OtherBase[];
   sendPosition: (tile: Tile) => Promise<MoveOutcome>;
   startGather: (nodeId: NodeId) => void;
   /** Called once the character stands beside a field, facing it. */
@@ -34,6 +37,8 @@ type Props = {
   placing: BuildingKind | null;
   /** Called when the player clicks a free spot while placing. */
   build: (kind: BuildingKind, x: number, y: number) => void;
+  /** Called when the character stands still on a travel zone. */
+  startTravel: () => void;
 };
 
 /**
@@ -46,6 +51,7 @@ export function GameCanvas({
   fields,
   villagers,
   buildings,
+  others,
   sendPosition,
   startGather,
   startHarvest,
@@ -53,6 +59,7 @@ export function GameCanvas({
   openStorehouse,
   placing,
   build,
+  startTravel,
 }: Props) {
   const parent = useRef<HTMLDivElement>(null);
   // The game is created once per character; it always calls the latest callbacks.
@@ -78,25 +85,35 @@ export function GameCanvas({
   latestVillagers.current = villagers;
   const latestBuildings = useRef(buildings);
   latestBuildings.current = buildings;
-  const initial = useRef(character);
+  const latestOthers = useRef(others);
+  latestOthers.current = others;
+  const travel = useRef(startTravel);
+  travel.current = startTravel;
+  const latestCharacter = useRef(character);
+  latestCharacter.current = character;
   const world = useRef<World | null>(null);
 
+  // A new game per section: arriving somewhere else (after travelling) loads that section's map.
+  const { region } = character;
+  // biome-ignore lint/correctness/useExhaustiveDependencies: the game is rebuilt when the section changes; everything else reaches it through refs.
   useEffect(() => {
     let cancelled = false;
     import("./createGame.ts").then(({ createGame }) => {
       if (cancelled || !parent.current) return;
       world.current = createGame(parent.current, {
-        character: initial.current,
+        character: latestCharacter.current,
         job: latestJob.current,
         fields: latestFields.current,
         villagers: latestVillagers.current,
         buildings: latestBuildings.current,
+        others: latestOthers.current,
         sendPosition: (tile) => send.current(tile),
         startGather: (nodeId) => gather.current(nodeId),
         startHarvest: (fieldId) => harvest.current(fieldId),
         turn: (facing) => turnTo.current(facing),
         openStorehouse: () => open.current(),
         build: (kind, x, y) => place.current(kind, x, y),
+        startTravel: () => travel.current(),
       });
       world.current.setPlacing(latestPlacing.current);
     });
@@ -105,7 +122,7 @@ export function GameCanvas({
       world.current?.destroy();
       world.current = null;
     };
-  }, []);
+  }, [region]);
 
   useEffect(() => {
     world.current?.setJob(job);
@@ -122,6 +139,10 @@ export function GameCanvas({
   useEffect(() => {
     world.current?.setBuildings(buildings);
   }, [buildings]);
+
+  useEffect(() => {
+    world.current?.setOthers(others);
+  }, [others]);
 
   useEffect(() => {
     world.current?.setPlacing(placing);

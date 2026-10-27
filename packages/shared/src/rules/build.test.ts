@@ -51,6 +51,7 @@ function state(overrides: Partial<GameState> = {}, inventory: Inventory = {}): G
     fields: [FIELD],
     villagers: [villager("v1"), villager("v2"), villager("v3")],
     job: null,
+    others: [],
     ...overrides,
   };
 }

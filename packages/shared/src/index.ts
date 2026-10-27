@@ -63,6 +63,7 @@ export {
   type Side,
   SPAWN_POINT,
   STARTING_REGION,
+  TRAVEL_DURATION_MS,
   TRAVEL_ZONE_TILES,
   type TravelZone,
   travelZonesIn,
@@ -86,7 +87,9 @@ export type {
   HarvestJob,
   Inventory,
   Job,
+  OtherBase,
   RemoveJob,
+  TravelJob,
   Villager,
   VillagerTask,
 } from "./game/state.ts";
@@ -107,6 +110,7 @@ export {
   MoveTo,
   parseClientMessage,
   StorehouseTransfer,
+  TravelStart,
   Turn,
   VillagerAssign,
 } from "./protocol/messages.ts";
@@ -156,6 +160,7 @@ export {
   storeItems,
   takeItems,
 } from "./rules/storehouse.ts";
+export { arrivalTile, completeTravel, startTravel, travelZoneAt } from "./rules/travel.ts";
 export {
   assignVillager,
   deliveriesBy,
