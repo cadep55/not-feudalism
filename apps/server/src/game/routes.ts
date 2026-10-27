@@ -1,5 +1,5 @@
 import { characters, type Db } from "@nf/db";
-import { ActionRequest } from "@nf/shared";
+import { ActionRequest, type WorldOverview } from "@nf/shared";
 import { eq } from "drizzle-orm";
 import { type RequestHandler, Router } from "express";
 import { rateLimit } from "express-rate-limit";
@@ -36,6 +36,27 @@ export function createGameRouter(deps: GameDeps): Router {
   router.get("/state", async (_req, res) => {
     const state = await readState(deps.db, currentPlayer(res).characterId, now());
     res.json({ state });
+  });
+
+  // The world view: who calls each section home, and where this player is.
+  router.get("/world", async (_req, res) => {
+    const [me] = await deps.db
+      .select({
+        worldId: characters.worldId,
+        homeRegion: characters.homeRegion,
+        region: characters.region,
+      })
+      .from(characters)
+      .where(eq(characters.id, currentPlayer(res).characterId));
+    if (!me?.worldId || !me.homeRegion) return sendFailure(res, "world_full");
+    const players = await deps.db
+      .select({ name: characters.name, homeRegion: characters.homeRegion })
+      .from(characters)
+      .where(eq(characters.worldId, me.worldId));
+    const owners: Record<string, string> = {};
+    for (const p of players) if (p.homeRegion) owners[p.homeRegion] = p.name;
+    const world: WorldOverview = { home: me.homeRegion, here: me.region, owners };
+    res.json({ world });
   });
 
   const limiter = rateLimit({

@@ -912,3 +912,27 @@ describe("GameScreen travel", () => {
     expect(canvas.props?.others).toEqual(visiting.others);
   });
 });
+
+describe("GameScreen world view", () => {
+  it("the World button opens the world view, loading who lives where, and closes it again", async () => {
+    const api = fakeApi();
+    await renderReady(api);
+    const button = screen.getByRole("button", { name: "World" });
+    await userEvent.click(button);
+    expect(api.getWorld).toHaveBeenCalledTimes(1);
+    expect(await screen.findByRole("list", { name: "Sections" })).toBeInTheDocument();
+    expect(button).toHaveAttribute("aria-pressed", "true");
+
+    await userEvent.click(button);
+    expect(screen.queryByRole("region", { name: "World" })).not.toBeInTheDocument();
+  });
+
+  it("explains when the world can't be loaded", async () => {
+    const api = fakeApi({
+      getWorld: vi.fn(async () => ({ ok: false as const, reason: "network_error" as const })),
+    });
+    await renderReady(api);
+    await userEvent.click(screen.getByRole("button", { name: "World" }));
+    expect(screen.getByRole("alert")).toHaveTextContent("Can't reach the server.");
+  });
+});

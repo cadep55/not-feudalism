@@ -51,7 +51,12 @@ The section names, the coastline and island shapes, and where resources stand ar
 - **Other players' bases:** in someone else's section you see their buildings (labelled with their name) and fields. You can't use them.
 - **Travel zones stay open:** no building's footprint or clear ring may cover a zone tile.
 
+## World view
+
+- The **World** button in the bottom bar, next to Build, opens a zoomed-out view over the map (closes with the button again, ✕ or Esc).
+- Every section is a rectangle on the world grid, shaped like a section, with its water shaded. Each says who calls it home ("Your home", another player's name, "Free", or "Needs a boat" for the island). Your home has a gold border, and the section you stand in is marked "You are here".
+- Look only for now. It reads `GET /game/world` each time it opens.
+
 ## Not yet
 
-- The world view (#53)
 - Boats and docks (#48)

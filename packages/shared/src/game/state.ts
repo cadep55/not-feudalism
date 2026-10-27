@@ -125,6 +125,16 @@ export type Villager = {
   task: VillagerTask | null;
 };
 
+/** What the world view shows: who calls each section home, and where the player is. */
+export type WorldOverview = {
+  /** The player's home section. */
+  home: string;
+  /** The section the player stands in. */
+  here: string;
+  /** Each taken section's player, by section id. Sections nobody has are left out. */
+  owners: Record<string, string>;
+};
+
 /** Another player's base, seen when standing in their section. Look, don't touch. */
 export type OtherBase = {
   characterName: string;

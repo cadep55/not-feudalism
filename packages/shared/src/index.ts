@@ -92,6 +92,7 @@ export type {
   TravelJob,
   Villager,
   VillagerTask,
+  WorldOverview,
 } from "./game/state.ts";
 export { ActionRequest, type GameAction, type GameActionType } from "./protocol/actions.ts";
 export { LoginRequest, SignUpRequest } from "./protocol/auth.ts";
