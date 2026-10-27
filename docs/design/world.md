@@ -25,7 +25,7 @@ All data lives in `packages/shared/src/data/world.ts` (`REGIONS`, `CONNECTIONS`,
 ```
 
 - Every section is **25 × 18** tiles.
-- `~` sections: the six eastern columns (x 19 to 24) are sea.
+- `~` sections: the four eastern columns (x 21 to 24) are sea, narrow enough that every reachable section has room for the same starting base, with the tree and rock in the same spots.
 - The isles: three rows of sea on the outer side (north for the north isle, south for the south isle) and three columns on each side. They join each other along their shared edge.
 - **Connections** join sections next to each other on the grid. The island joins only itself, so it can't be walked to.
 - A **travel zone** is the 3 tiles in the middle of a shared edge (x 11 to 13 on top and bottom edges, y 7 to 9 on the sides).

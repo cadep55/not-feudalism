@@ -190,8 +190,8 @@ describe("planting", () => {
   it("can't be planted in water", () => {
     const coast = state(OPEN, {}, []);
     const onCoast = { ...coast, character: { ...coast.character, region: "east_coast" } };
-    expect(plantingBlocked(onCoast, { x: 19, y: 5 })).toBe("cannot_plant_here");
-    expect(plantingBlocked(onCoast, { x: 18, y: 5 })).toBeNull();
+    expect(plantingBlocked(onCoast, { x: 21, y: 9 })).toBe("cannot_plant_here");
+    expect(plantingBlocked(onCoast, { x: 20, y: 9 })).toBeNull();
   });
 
   it("can't be harvested until grown", () => {

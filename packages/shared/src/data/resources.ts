@@ -45,8 +45,8 @@ export const RESOURCE_NODES = {
   },
   northeast_coast_rock: {
     region: "northeast_coast",
-    x: 12,
-    y: 3,
+    x: 19,
+    y: 4,
     kind: "rock",
     yields: "stone",
     requires: null,
@@ -72,8 +72,8 @@ export const RESOURCE_NODES = {
   },
   east_coast_rock: {
     region: "east_coast",
-    x: 12,
-    y: 3,
+    x: 19,
+    y: 4,
     kind: "rock",
     yields: "stone",
     requires: null,
@@ -90,8 +90,8 @@ export const RESOURCE_NODES = {
   },
   southeast_coast_rock: {
     region: "southeast_coast",
-    x: 12,
-    y: 3,
+    x: 19,
+    y: 4,
     kind: "rock",
     yields: "stone",
     requires: null,

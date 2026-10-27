@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { MoveTo } from "../protocol/messages.ts";
+import { footprint, STARTING_BUILDINGS } from "./buildings.ts";
+import { STARTING_FIELDS } from "./farming.ts";
+import { nodeYielding, RESOURCE_NODES } from "./resources.ts";
 import {
   CONNECTIONS,
   inRect,
@@ -63,8 +66,8 @@ describe("the world's sections", () => {
   });
 
   it("knows which tiles are water", () => {
-    expect(isWater("east_coast", { x: 19, y: 5 })).toBe(true);
-    expect(isWater("east_coast", { x: 18, y: 5 })).toBe(false);
+    expect(isWater("east_coast", { x: 21, y: 5 })).toBe(true);
+    expect(isWater("east_coast", { x: 20, y: 5 })).toBe(false);
     expect(isWater("heartland", { x: 24, y: 0 })).toBe(false);
     expect(isWater("north_isle", { x: 12, y: 1 })).toBe(true);
     expect(isWater("north_isle", { x: 12, y: 17 })).toBe(false);
@@ -131,4 +134,26 @@ describe("connections and travel zones", () => {
     expect(travelZonesIn("east_coast").map((z) => z.to)).not.toContain("north_isle");
     expect(travelZonesIn("atlantis")).toEqual([]);
   });
+});
+
+describe("every reachable section fits a new player's base", () => {
+  it.each(REGION_IDS.filter((id) => REGIONS[id].reachable))(
+    "%s has the tree and rock in the starting spots, and no water under the starting base",
+    (region) => {
+      expect(RESOURCE_NODES[nodeYielding(region, "wood") ?? "heartland_tree"]).toMatchObject({
+        x: RESOURCE_NODES.heartland_tree.x,
+        y: RESOURCE_NODES.heartland_tree.y,
+      });
+      expect(RESOURCE_NODES[nodeYielding(region, "stone") ?? "heartland_rock"]).toMatchObject({
+        x: RESOURCE_NODES.heartland_rock.x,
+        y: RESOURCE_NODES.heartland_rock.y,
+      });
+      const base = [
+        ...STARTING_BUILDINGS.flatMap((b) => footprint(b)),
+        ...STARTING_FIELDS,
+        SPAWN_POINT,
+      ];
+      for (const tile of base) expect(isWater(region, tile)).toBe(false);
+    },
+  );
 });

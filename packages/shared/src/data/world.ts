@@ -22,8 +22,12 @@ export type Section = {
 };
 
 const size = SECTION_SIZE;
-/** The east coast sections: the six eastern columns are sea. */
-const EAST_SEA: readonly Rect[] = [{ x: 19, y: 0, width: 6, height: 18 }];
+/**
+ * The east coast sections: the four eastern columns are sea. Narrow enough
+ * that every reachable section has room for the same starting base and the
+ * tree and rock in the same spots, wherever a new player lands.
+ */
+const EAST_SEA: readonly Rect[] = [{ x: 21, y: 0, width: 4, height: 18 }];
 
 // TODO(design): section names, and the exact shapes of the coast and the island.
 /**
