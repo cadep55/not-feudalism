@@ -8,7 +8,7 @@ This is the shared playbook for every contributor, both humans and AI coding age
 
 A persistent online medieval world in the spirit of Feudalism 2. Players start as peasants, then farm, craft, trade, fight and scheme their way up the feudal ladder (peasant → knight → lord → king). It's easy to start, slow to master, and built so players depend on each other. The full vision and feature list are in [GUIDE.md](GUIDE.md).
 
-**We're in Phase 1: single player** ([ADR 0002](docs/decisions/0002-single-player-first.md)). Each player has their own persistent world; the server still runs every rule, over HTTP (`GET /game/state`, `POST /game/actions`), so progress carries into **Phase 2: multiplayer**, which adds Colyseus rooms. Don't build multiplayer features (rooms, chat, player market) until Phase 2 starts; check the issue's milestone.
+**We're in Phase 1, with a shared world** ([ADR 0002](docs/decisions/0002-single-player-first.md), [ADR 0004](docs/decisions/0004-shared-world.md)). Players share a world of 10 sections, one player per section; the server runs every rule over HTTP (`GET /game/state`, `POST /game/actions`) with timed actions. **Phase 2: multiplayer** adds real-time Colyseus rooms (seeing each other move, chat). Don't build real-time features until Phase 2 starts; check the issue's milestone.
 
 ## Where to look
 

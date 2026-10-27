@@ -1,6 +1,6 @@
 # ADR 0002: Single player first, with the server running the rules
 
-- **Status:** Accepted
+- **Status:** Accepted. The private-world part is superseded by [ADR 0004](0004-shared-world.md)
 - **Date:** 2026-10-24
 - **Deciders:** cadep55
 
