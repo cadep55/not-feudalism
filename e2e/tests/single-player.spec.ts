@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { travelZonesIn } from "@nf/shared";
 import { expect, type Page, test } from "@playwright/test";
 import { serverURL } from "../playwright.config.ts";
 import { deletePlayers, rememberPlayer } from "./cleanup.ts";
@@ -241,8 +242,11 @@ test("a villager sent for wood fills the storehouse", async ({ page }) => {
   });
 });
 
-/** Open grass with room for a 2x2 building and the clear tile around it. */
-const OPEN_SPOT = { x: 20, y: 13 };
+/**
+ * Open grass with room for a 2x2 building and the clear tile around it, in
+ * every section a new player can land in (the coast sections' sea starts at x 21).
+ */
+const OPEN_SPOT = { x: 17, y: 13 };
 
 async function serverBuildings(
   page: Page,
@@ -278,14 +282,42 @@ test("a player builds a house from 5 wood, then removes it for a refund", async 
   });
 
   await test.step("10 seconds later the house stands, and it's saved", async () => {
-    const remove = build.getByRole("button", { name: "Remove House at 20,13" });
+    const remove = build.getByRole("button", { name: "Remove House at 17,13" });
     await expect(remove).toBeVisible({ timeout: 15_000 });
     expect((await serverBuildings(page)).filter((b) => b.kind === "house")).toHaveLength(2);
   });
 
   await test.step("remove it: the 5 wood come back", async () => {
-    await build.getByRole("button", { name: "Remove House at 20,13" }).click();
+    await build.getByRole("button", { name: "Remove House at 17,13" }).click();
     await expect(inventory.getByRole("listitem")).toHaveText(["Wood 5/5"]);
     expect((await serverBuildings(page)).filter((b) => b.kind === "house")).toHaveLength(1);
+  });
+});
+
+test("a player walks onto a travel zone and arrives in the next section", async ({ page }) => {
+  test.setTimeout(60_000);
+  await test.step("sign up", () => signUp(page));
+  const res = await page.request.get(`${serverURL}/game/state`);
+  const { state } = (await res.json()) as { state: { character: { region: string } } };
+  const home = state.character.region;
+  const [zone] = travelZonesIn(home);
+  if (!zone) throw new Error(`${home} has no travel zone`);
+
+  await test.step(`walk onto the zone toward ${zone.to}`, async () => {
+    await clickTile(page, { x: zone.tiles.x, y: zone.tiles.y });
+  });
+
+  await test.step("about 5 seconds later the character is in the next section", async () => {
+    await expect
+      .poll(
+        async () => {
+          const now = await page.request.get(`${serverURL}/game/state`);
+          return ((await now.json()) as { state: { character: { region: string } } }).state
+            .character.region;
+        },
+        { timeout: 30_000 },
+      )
+      .toBe(zone.to);
+    await expect(page.locator("canvas")).toBeVisible();
   });
 });

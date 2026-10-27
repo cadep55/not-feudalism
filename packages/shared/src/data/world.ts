@@ -114,6 +114,9 @@ export const CONNECTIONS: readonly (readonly [RegionId, RegionId])[] = [
   ["north_isle", "south_isle"],
 ];
 
+/** How long travelling to the next section takes, standing on its travel zone. */
+export const TRAVEL_DURATION_MS = 5_000;
+
 /** How many tiles wide a travel zone is, in the middle of the shared edge. */
 export const TRAVEL_ZONE_TILES = 3;
 

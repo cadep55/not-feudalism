@@ -4,6 +4,7 @@ import type { GameState } from "../game/state.ts";
 import { completeBuild } from "./build.ts";
 import { completeHarvest } from "./farming.ts";
 import { addItems } from "./inventory.ts";
+import { completeTravel } from "./travel.ts";
 
 /**
  * Finishes the job if its time has come, adding what it produced. Called before
@@ -37,5 +38,7 @@ export function resolveJob(state: GameState, now: number): GameState {
     case "remove":
       // The building came down when the job started; finishing just frees the character.
       return { ...state, job: null };
+    case "travel":
+      return { ...completeTravel(state, job.to, job.arrive, job.completesAt), job: null };
   }
 }

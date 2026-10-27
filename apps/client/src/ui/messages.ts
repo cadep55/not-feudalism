@@ -12,6 +12,7 @@ export const FAILURE_MESSAGES: Record<FailureReason | "network_error", string> =
   out_of_bounds: "You can't go there.",
   moved_too_fast: "Slow down! You can't walk that fast.",
   water: "You can't walk into water. Boats come later.",
+  not_at_travel_zone: "Stand on a travel zone at the middle of an edge to travel.",
   too_far_away: "Get closer to gather.",
   not_facing: "Face it to gather.",
   busy: "You're busy with another job.",

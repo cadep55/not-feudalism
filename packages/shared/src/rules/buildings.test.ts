@@ -44,6 +44,7 @@ function state(x: number, y: number, facing: Direction): GameState {
     fields: [],
     villagers: [],
     job: null,
+    others: [],
   };
 }
 

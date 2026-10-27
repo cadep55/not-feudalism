@@ -9,6 +9,7 @@ import {
   type Job,
   type NodeId,
   newField,
+  type OtherBase,
   RESOURCE_NODES,
   STARTING_BUILDINGS,
   STARTING_HOUSE,
@@ -39,6 +40,8 @@ const canvas = vi.hoisted(() => ({
     openStorehouse: () => void;
     placing: BuildingKind | null;
     build: (kind: BuildingKind, x: number, y: number) => void | Promise<void>;
+    others: OtherBase[];
+    startTravel: () => void | Promise<void>;
   },
 }));
 vi.mock("../game/GameCanvas.tsx", () => ({
@@ -874,5 +877,38 @@ describe("GameScreen building", () => {
       payload: { buildingId: "house_2" },
     });
     expect(screen.getByRole("alert")).toHaveTextContent("There's no room for the refund.");
+  });
+});
+
+describe("GameScreen travel", () => {
+  it("sends travel.start when the game says the character stands on a travel zone", async () => {
+    const travelling: GameState = {
+      ...ALICE_STATE,
+      job: {
+        kind: "travel",
+        to: "north",
+        arrive: { x: 12, y: 16 },
+        startedAt: Date.now(),
+        completesAt: Date.now() + 5_000,
+      },
+    };
+    const api = fakeApi({
+      sendAction: vi.fn(async () => ({ ok: true as const, value: travelling })),
+    });
+    await renderReady(api);
+    await act(async () => canvas.props?.startTravel());
+    expect(api.sendAction).toHaveBeenCalledWith({ type: "travel.start", payload: {} });
+    expect(canvas.props?.job).toEqual(travelling.job);
+  });
+
+  it("shows other players' bases to the canvas", async () => {
+    const visiting: GameState = {
+      ...ALICE_STATE,
+      character: { ...ALICE_STATE.character, region: "north" },
+      others: [{ characterName: "Bob", buildings: [], fields: [] }],
+    };
+    const api = fakeApi({ getState: vi.fn(async () => ({ ok: true as const, value: visiting })) });
+    await renderReady(api);
+    expect(canvas.props?.others).toEqual(visiting.others);
   });
 });

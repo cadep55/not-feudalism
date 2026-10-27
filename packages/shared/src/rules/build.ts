@@ -13,7 +13,7 @@ import {
 import type { ItemId } from "../data/items.ts";
 import { RESOURCE_NODES } from "../data/resources.ts";
 import { VILLAGER_NAMES, VILLAGERS_PER_HOUSE } from "../data/villagers.ts";
-import { isRegionId, isWater, REGIONS } from "../data/world.ts";
+import { inRect, isRegionId, isWater, REGIONS, travelZonesIn } from "../data/world.ts";
 import type { CharacterState, GameState, Inventory, Villager } from "../game/state.ts";
 import { fail, ok, type RuleResult } from "../result.ts";
 import { buildingAt, buildingsOf, storehousesByDistance } from "./buildings.ts";
@@ -78,7 +78,9 @@ export function placementBlocked(
         (n) => n.region === region && n.x === tx && n.y === ty,
       );
       const onField = state.fields.some((f) => f.region === region && f.x === tx && f.y === ty);
-      if (onNode || onField || isWater(region, tile)) return "cannot_build_here";
+      // Travel zones stay open, so nobody builds across a way in or out of a section.
+      const onZone = travelZonesIn(region).some((zone) => inRect(zone.tiles, tile));
+      if (onNode || onField || onZone || isWater(region, tile)) return "cannot_build_here";
     }
   }
   if (covers({ id: "", region, kind, x, y, width, height }, state.character)) {

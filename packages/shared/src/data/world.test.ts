@@ -165,6 +165,10 @@ describe("every reachable section fits a new player's base", () => {
         SPAWN_POINT,
       ];
       for (const tile of base) expect(isWater(region, tile)).toBe(false);
+      // The spot the e2e test builds a house on (17, 13), with its clear ring, is dry everywhere too.
+      for (let y = 12; y <= 15; y++) {
+        for (let x = 16; x <= 19; x++) expect(isWater(region, { x, y })).toBe(false);
+      }
     },
   );
 });

@@ -4,11 +4,12 @@ import {
   type ActionRequest,
   applyAction,
   type GameState,
+  ok,
   type RuleResult,
   settleWorld,
 } from "@nf/shared";
 import { and, eq } from "drizzle-orm";
-import { loadStateForUpdate, saveState } from "./state-store.ts";
+import { loadOthers, loadStateForUpdate, saveState } from "./state-store.ts";
 
 export type ActionResult = RuleResult<GameState, ActionFailure>;
 
@@ -22,8 +23,21 @@ export async function readState(db: Db, characterId: string, now: Date): Promise
     const before = await loadStateForUpdate(tx, characterId);
     const after = settleWorld(before, now.getTime());
     if (after !== before) await saveState(tx, before, after, now);
-    return after;
+    return withOthersHere(tx, before, after);
   });
+}
+
+/**
+ * Other players' bases are loaded for the section the character stood in. A
+ * finished trip moves them, so look again in the section they're in now.
+ */
+async function withOthersHere(
+  db: DbExecutor,
+  before: GameState,
+  after: GameState,
+): Promise<GameState> {
+  if (after.character.region === before.character.region) return after;
+  return { ...after, others: await loadOthers(db, after.character.id, after.character.region) };
 }
 
 async function storedResult(
@@ -61,9 +75,11 @@ export async function performAction(
       if (previous) return previous;
 
       const before = await loadStateForUpdate(tx, characterId);
-      const result = applyAction(before, action, now.getTime());
-      if (result.ok) {
-        await saveState(tx, before, result.value, now);
+      const applied = applyAction(before, action, now.getTime());
+      let result: ActionResult = applied;
+      if (applied.ok) {
+        await saveState(tx, before, applied.value, now);
+        result = ok(await withOthersHere(tx, before, applied.value));
       } else {
         // A refused action still collects finished jobs and villager deliveries.
         const resolved = settleWorld(before, now.getTime());
