@@ -53,15 +53,17 @@ Proposed answers to all of these are in [ADR 0001](docs/decisions/0001-tech-stac
 
 Two phases ([ADR 0002](docs/decisions/0002-single-player-first.md)). Accounts exist from the start, for login and saving progress, and that progress carries from Phase 1 into Phase 2.
 
-### Phase 1: Single player
+### Phase 1: Single player, then a shared world
 
-Play alone in your own persistent world.
+Started as each player alone in their own world; now players share one world of 10 sections, one each ([ADR 0004](docs/decisions/0004-shared-world.md)), still without real-time play.
 
 - Player account, character and cloud-saved progress
 - Basic map: walk around, come back where you left off
 - Prototype loop: one resource, one crafting recipe, one trade with an NPC merchant
 - Full single-player economy: several resources and recipes, NPC markets
 - Build your own houses (5 wood) and storehouses (5 wood + 5 stone) ([#40](https://github.com/cadep55/not-feudalism/issues/40))
+- A shared world of 10 sections with travel and a world view ([#47](https://github.com/cadep55/not-feudalism/issues/47))
+- Coin, a market with an NPC trader, teams and trade caravans ([#47](https://github.com/cadep55/not-feudalism/issues/47))
 - Land ownership and more buildings
 - Basic combat against NPCs
 - Put it online so both owners (then friends) can play their own games
@@ -109,6 +111,7 @@ Record agreed decisions here with the date.
 - **2026-10-24:** Wheat fields hold **50 wheat + 5 wheat seeds** (every 10th harvest gives a seed) and disappear when empty. Plant a seed on the grass tile in front of you; it grows for **5 minutes**.
 - **2026-10-24:** The house holds **3 villagers** with random medieval names. Idle ones wander near the house (visual only). Assign them from a Villagers panel; they gather at **1/3 player speed**, carry 5, and deliver to the storehouse until it's full. **Each farming villager needs its own rake.**
 - **2026-10-25:** Players **build houses (5 wood) and storehouses (5 wood + 5 stone)** from their inventory in **10 seconds**, up to **5 houses and 3 storehouses**, with a clear tile on every side. Removing takes **5 seconds** and refunds the cost (to the inventory, then the nearest storehouse); a storehouse must be empty, and the last house and storehouse stay. Each new house brings 3 villagers. **Each storehouse keeps its own stock**; villagers deliver to the nearest, then the next nearest. ([docs/design/buildings.md](docs/design/buildings.md), #40)
+- **2026-10-26:** Players **share one world of 10 sections**, one player per section (at most 10 players; the 11th waits). New players get a random free section; 3 east sections are partly water and 2 form an island (reachable once boats exist). Travel between sections at the middle of shared edges takes 5 seconds. Live multiplayer stays Phase 2. ([ADR 0004](docs/decisions/0004-shared-world.md), #47)
 
 ## Ideas Parking Lot
 

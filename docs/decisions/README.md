@@ -5,8 +5,9 @@ One short file per hard-to-reverse decision (a library, a protocol, a data model
 | ADR | Title | Status |
 |---|---|---|
 | [0001](0001-tech-stack.md) | Tech stack and multiplayer model | Proposed |
-| [0002](0002-single-player-first.md) | Single player first, with the server running the rules | Accepted |
+| [0002](0002-single-player-first.md) | Single player first, with the server running the rules | Accepted; private worlds superseded by 0004 |
 | [0003](0003-player-buildings.md) | Buildings and storehouse stock are per-player game state | Accepted |
+| [0004](0004-shared-world.md) | A shared world of sections replaces private worlds | Accepted |
 
 ## Template
 
