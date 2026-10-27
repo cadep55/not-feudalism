@@ -32,6 +32,7 @@ function state(x: number, y: number, facing: Direction): GameState {
       rank: "peasant",
       gold: 0,
       region: "heartland",
+      homeRegion: "heartland",
       x,
       y,
       movedAt: 0,

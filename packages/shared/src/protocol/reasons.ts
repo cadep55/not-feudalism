@@ -34,6 +34,8 @@ export const FAILURE_REASONS = [
   "last_building",
   "storehouse_not_empty",
   "no_room_for_refund",
+  "not_your_section",
+  "world_full",
   "protocol_mismatch",
 ] as const;
 

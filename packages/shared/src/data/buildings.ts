@@ -72,11 +72,19 @@ export const STARTING_HOUSE: StartingBuilding = {
   ...BUILDING_SIZES.house,
 };
 
-/** The buildings every new world starts with. */
+/**
+ * The buildings every new player starts with, as placed in heartland. (Their
+ * ids date from when every player lived there.)
+ */
 export const STARTING_BUILDINGS: readonly StartingBuilding[] = [
   STARTING_STOREHOUSE,
   STARTING_HOUSE,
 ];
+
+/** A new player's starting buildings, placed in their home section. Every reachable section fits them. */
+export function startingBuildings(region: string): Building[] {
+  return STARTING_BUILDINGS.map((b) => ({ ...b, region }));
+}
 
 /** Every tile a building covers. */
 export function footprint(building: Building): { x: number; y: number }[] {

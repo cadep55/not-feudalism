@@ -132,7 +132,11 @@ export function plantingBlocked(
 export function plantSeed(
   state: GameState,
   now: number,
-): RuleResult<GameState, "no_seeds" | "out_of_bounds" | "cannot_plant_here" | "busy"> {
+): RuleResult<
+  GameState,
+  "not_your_section" | "no_seeds" | "out_of_bounds" | "cannot_plant_here" | "busy"
+> {
+  if (state.character.region !== state.character.homeRegion) return fail("not_your_section");
   if (!state.inventory.wheat_seeds) return fail("no_seeds");
   if (state.job) return fail("busy");
   const { character } = state;

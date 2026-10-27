@@ -3,7 +3,7 @@ import { LoginRequest, SignUpRequest } from "@nf/shared";
 import { type CookieOptions, Router } from "express";
 import { rateLimit } from "express-rate-limit";
 import { sendFailure } from "../http/failure.ts";
-import { logIn, signUp } from "./service.ts";
+import { logIn, MAIN_WORLD, signUp, type WorldChoice } from "./service.ts";
 import {
   deleteSession,
   findSessionPlayer,
@@ -18,6 +18,8 @@ export type AuthDeps = {
   /** Sign-up and login attempts allowed per IP per 15 minutes. */
   rateLimitPerWindow: number;
   now?: () => Date;
+  /** The world new players join; the main one unless tests give their own. */
+  world?: WorldChoice;
 };
 
 const RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000;
@@ -44,7 +46,7 @@ export function createAuthRouter(deps: AuthDeps): Router {
   router.post("/signup", limiter, async (req, res) => {
     const input = SignUpRequest.safeParse(req.body);
     if (!input.success) return sendFailure(res, "invalid_input");
-    const result = await signUp(deps.db, input.data, now());
+    const result = await signUp(deps.db, input.data, now(), deps.world ?? MAIN_WORLD);
     if (!result.ok) return sendFailure(res, result.reason);
     res.cookie(SESSION_COOKIE, result.value.token, {
       ...cookieOptions,

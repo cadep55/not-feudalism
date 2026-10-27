@@ -29,6 +29,7 @@ import {
 // Rules: docs/design/buildings.md.
 
 export type BuildFailure =
+  | "not_your_section"
   | "busy"
   | "building_limit"
   | "missing_materials"
@@ -97,6 +98,8 @@ export function startBuild(
   y: number,
   now: number,
 ): RuleResult<GameState, BuildFailure> {
+  // TODO(design): allies may build in each other's sections (#55).
+  if (state.character.region !== state.character.homeRegion) return fail("not_your_section");
   if (state.job) return fail("busy");
   if (buildingsOf(state, kind).length >= BUILDING_LIMITS[kind]) return fail("building_limit");
   const cost = BUILD_COSTS[kind];

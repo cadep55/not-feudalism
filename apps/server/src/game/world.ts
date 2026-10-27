@@ -2,15 +2,19 @@ import { buildings, type DbExecutor, fields, villagers } from "@nf/db";
 import {
   newField,
   pickVillagerNames,
-  STARTING_BUILDINGS,
   STARTING_FIELDS,
   STARTING_HOUSE,
+  startingBuildings,
 } from "@nf/shared";
 
-/** Gives a new character the world it starts with (Phase 1: each character has its own). */
-export async function createStartingWorld(db: DbExecutor, characterId: string): Promise<void> {
+/** Gives a new character its starting base, in its home section. */
+export async function createStartingWorld(
+  db: DbExecutor,
+  characterId: string,
+  homeRegion: string,
+): Promise<void> {
   await db.insert(buildings).values(
-    STARTING_BUILDINGS.map(({ id, kind, region, x, y, width, height }) => ({
+    startingBuildings(homeRegion).map(({ id, kind, region, x, y, width, height }) => ({
       characterId,
       buildingId: id,
       kind,
@@ -33,7 +37,8 @@ export async function createStartingWorld(db: DbExecutor, characterId: string): 
   );
   if (STARTING_FIELDS.length === 0) return;
   await db.insert(fields).values(
-    STARTING_FIELDS.map(({ region, x, y }) => {
+    STARTING_FIELDS.map(({ x, y }) => {
+      const region = homeRegion;
       // Already grown: ready since the epoch.
       const field = newField(region, x, y, 0);
       return {

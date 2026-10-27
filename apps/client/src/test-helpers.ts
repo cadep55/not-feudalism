@@ -9,6 +9,7 @@ export const ALICE_STATE: GameState = {
     rank: "peasant",
     gold: 0,
     region: "heartland",
+    homeRegion: "heartland",
     x: 10,
     y: 10,
     movedAt: 0,

@@ -1,6 +1,7 @@
-import type { Db } from "@nf/db";
+import { characters, type Db } from "@nf/db";
 import { ActionRequest } from "@nf/shared";
-import { Router } from "express";
+import { eq } from "drizzle-orm";
+import { type RequestHandler, Router } from "express";
 import { rateLimit } from "express-rate-limit";
 import { currentPlayer, requireSession } from "../auth/require-session.ts";
 import { sendFailure } from "../http/failure.ts";
@@ -13,11 +14,24 @@ export type GameDeps = {
   now?: () => Date;
 };
 
+/** Characters still waiting for a free section can't play yet: the world is full (ADR 0004). */
+function requireSection(db: Db): RequestHandler {
+  return async (_req, res, next) => {
+    const [row] = await db
+      .select({ homeRegion: characters.homeRegion })
+      .from(characters)
+      .where(eq(characters.id, currentPlayer(res).characterId));
+    if (!row?.homeRegion) return sendFailure(res, "world_full");
+    next();
+  };
+}
+
 /** GET /state and POST /actions for the logged-in character (mounted at /game). */
 export function createGameRouter(deps: GameDeps): Router {
   const now = deps.now ?? (() => new Date());
   const router = Router();
   router.use(requireSession(deps.db, now));
+  router.use(requireSection(deps.db));
 
   router.get("/state", async (_req, res) => {
     const state = await readState(deps.db, currentPlayer(res).characterId, now());

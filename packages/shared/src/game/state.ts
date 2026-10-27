@@ -14,7 +14,10 @@ export type CharacterState = {
   rank: string;
   /** Smallest coin unit; always an integer. */
   gold: number;
+  /** The section the character stands in. */
   region: string;
+  /** The section the character calls home: one per player (ADR 0004). They build and plant only here. */
+  homeRegion: string;
   x: number;
   y: number;
   /** When the character last moved, in milliseconds since the epoch. Used for speed checks. */

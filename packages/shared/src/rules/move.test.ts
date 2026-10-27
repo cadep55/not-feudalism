@@ -16,6 +16,7 @@ function character(overrides: Partial<CharacterState> = {}): CharacterState {
     rank: "peasant",
     gold: 0,
     region: "heartland",
+    homeRegion: "heartland",
     x: 5,
     y: 5,
     movedAt: LAST_MOVE,

@@ -83,7 +83,7 @@ pnpm db:reset         # wipe the local database, then migrate and seed
 pnpm db:studio        # browse the database in Drizzle Studio
 ```
 
-Integration tests are named `*.int.test.ts`, so `pnpm test` skips them. In CI they run in a separate job with a Postgres service.
+Integration tests are named `*.int.test.ts`, so `pnpm test` skips them. In CI they run in a separate job with a Postgres service. They sign players up with `TEST_WORLD` (a fresh world each), and e2e tests delete the players they create, so tests never fill the shared world (one player per section, [ADR 0004](docs/decisions/0004-shared-world.md)).
 
 Run one package's task with a filter, e.g. `pnpm --filter @nf/shared test`.
 

@@ -8,6 +8,7 @@ import { pino } from "pino";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { SESSION_COOKIE } from "../auth/sessions.ts";
 import { configureHttp } from "../http/app.ts";
+import { TEST_WORLD } from "../test-world.ts";
 
 const { DATABASE_URL } = readDbEnv();
 const { db, close } = createDb(DATABASE_URL);
@@ -26,7 +27,7 @@ async function startApp(actionsPerMinute = 1_000): Promise<Call> {
     clientOrigin: "http://localhost:5173",
     logger: pino({ level: "silent" }),
     checkDatabase: async () => {},
-    auth: { db, secureCookies: false, rateLimitPerWindow: 1_000 },
+    auth: { db, secureCookies: false, rateLimitPerWindow: 1_000, world: TEST_WORLD },
     game: { db, actionsPerMinute, now: () => new Date(clock) },
   });
   const server = app.listen(0);
@@ -101,6 +102,7 @@ describe("GET /game/state", () => {
       rank: "peasant",
       gold: 0,
       region: "heartland",
+      homeRegion: "heartland",
       ...SPAWN_POINT,
     });
   });

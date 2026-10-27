@@ -49,6 +49,16 @@ export const sessions = pgTable(
   (table) => [index("sessions_account_id_idx").on(table.accountId)],
 );
 
+/**
+ * Shared worlds of sections, one player per section (ADR 0004). The game uses
+ * one main world; tests make their own so they never fill it.
+ */
+export const worlds = pgTable("worlds", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  name: text("name").notNull().unique(),
+  ...timestamps,
+});
+
 export const characters = pgTable(
   "characters",
   {
@@ -63,7 +73,12 @@ export const characters = pgTable(
     rank: text("rank").notNull().default("peasant"),
     // Smallest coin unit; never a float.
     gold: integer("gold").notNull().default(0),
+    // The section the character stands in (REGIONS in packages/shared/src/data/world.ts).
     region: text("region").notNull(),
+    // The world the character plays in, and the section that is home: one player per
+    // section. Both null while waiting for a free section.
+    worldId: uuid("world_id").references(() => worlds.id, { onDelete: "set null" }),
+    homeRegion: text("home_region"),
     x: integer("x").notNull(),
     y: integer("y").notNull(),
     // Last move, for walking-speed checks (ADR 0002).
@@ -72,7 +87,11 @@ export const characters = pgTable(
     facing: text("facing").notNull().default("s"),
     ...timestamps,
   },
-  (table) => [uniqueIndex("characters_name_lower_idx").on(sql`lower(${table.name})`)],
+  (table) => [
+    uniqueIndex("characters_name_lower_idx").on(sql`lower(${table.name})`),
+    // One player per section of a world.
+    uniqueIndex("characters_world_home_region_idx").on(table.worldId, table.homeRegion),
+  ],
 );
 
 /**

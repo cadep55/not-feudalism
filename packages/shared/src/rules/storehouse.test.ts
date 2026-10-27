@@ -30,6 +30,7 @@ function state(
       rank: "peasant",
       gold: 0,
       region: "heartland",
+      homeRegion: "heartland",
       movedAt: 0,
       ...where,
     },

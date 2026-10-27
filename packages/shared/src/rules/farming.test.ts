@@ -38,6 +38,7 @@ function state(
       rank: "peasant",
       gold: 0,
       region: "heartland",
+      homeRegion: "heartland",
       movedAt: 0,
       ...where,
     },
@@ -185,6 +186,12 @@ describe("planting", () => {
     for (const target of [tree, { x: store.x, y: store.y }, { x: FIELD.x, y: FIELD.y }]) {
       expect(plantingBlocked(state(OPEN, {}, [FIELD]), target)).toBe("cannot_plant_here");
     }
+  });
+
+  it("only in the character's own section", () => {
+    const planting = state(OPEN, { wheat_seeds: 1 }, []);
+    const visiting = { ...planting, character: { ...planting.character, region: "north" } };
+    expect(plantSeed(visiting, NOW)).toEqual({ ok: false, reason: "not_your_section" });
   });
 
   it("can't be planted in water", () => {

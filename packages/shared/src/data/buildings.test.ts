@@ -7,6 +7,7 @@ import {
   STARTING_BUILDINGS,
   STARTING_STOREHOUSE,
   STOREHOUSE_LIMIT,
+  startingBuildings,
 } from "./buildings.ts";
 import { NODE_IDS, RESOURCE_NODES } from "./resources.ts";
 import { REGIONS, SPAWN_POINT } from "./world.ts";
@@ -51,6 +52,13 @@ describe("building data", () => {
       }
     }
     expect(taken.has(`${SPAWN_POINT.x},${SPAWN_POINT.y}`)).toBe(false);
+  });
+
+  it("places a new player's starting buildings in their own section", () => {
+    expect(startingBuildings("south").map((b) => b.region)).toEqual(["south", "south"]);
+    expect(startingBuildings("south").map((b) => [b.x, b.y])).toEqual(
+      STARTING_BUILDINGS.map((b) => [b.x, b.y]),
+    );
   });
 
   it("knows which tiles a building covers", () => {

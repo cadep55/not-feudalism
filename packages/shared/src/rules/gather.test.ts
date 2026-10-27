@@ -26,6 +26,7 @@ function stateAt(
       rank: "peasant",
       gold: 0,
       region: "heartland",
+      homeRegion: "heartland",
       ...position,
       movedAt: 0,
       facing: directionBetween(position, toward) ?? "s",

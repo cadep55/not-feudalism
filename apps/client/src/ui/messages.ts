@@ -33,6 +33,8 @@ export const FAILURE_MESSAGES: Record<FailureReason | "network_error", string> =
   last_building: "You can't remove your last house or storehouse.",
   storehouse_not_empty: "Empty the storehouse before removing it.",
   no_room_for_refund: "There's no room for the refund. Make space in your hands or the storehouse.",
+  not_your_section: "You can only build and plant in your own section.",
+  world_full: "The world is full. Every section has a player; try again later.",
   protocol_mismatch: "A new version of the game is out. Please refresh the page.",
   network_error: "Can't reach the server. Is it running?",
 };

@@ -18,6 +18,7 @@ function stateWith(inventory: Inventory, overrides: Partial<GameState> = {}): Ga
       rank: "peasant",
       gold: 0,
       region: "heartland",
+      homeRegion: "heartland",
       x: 10,
       y: 10,
       movedAt: 0,
