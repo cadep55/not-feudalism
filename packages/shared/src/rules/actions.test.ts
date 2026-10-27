@@ -14,6 +14,7 @@ const state: GameState = {
     rank: "peasant",
     gold: 0,
     region: "heartland",
+    homeRegion: "heartland",
     x: tree.x + 1,
     y: tree.y,
     movedAt: 0,

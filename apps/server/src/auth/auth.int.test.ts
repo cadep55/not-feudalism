@@ -7,6 +7,7 @@ import express from "express";
 import { pino } from "pino";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { configureHttp } from "../http/app.ts";
+import { TEST_WORLD } from "../test-world.ts";
 import {
   authenticateCookieHeader,
   createSession,
@@ -26,7 +27,7 @@ async function startApp(rateLimitPerWindow = 1_000) {
     clientOrigin: "http://localhost:5173",
     logger: pino({ level: "silent" }),
     checkDatabase: async () => {},
-    auth: { db, secureCookies: false, rateLimitPerWindow },
+    auth: { db, secureCookies: false, rateLimitPerWindow, world: TEST_WORLD },
   });
   const server = app.listen(0);
   servers.push(server);

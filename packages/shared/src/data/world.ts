@@ -175,6 +175,15 @@ export function isWater(region: string, tile: { x: number; y: number }): boolean
   return REGIONS[region].water.some((rect) => inRect(rect, tile));
 }
 
-// TODO(design): starting region name and spawn point for new characters.
+/**
+ * Sections a new player can be given: reachable ones nobody calls home yet
+ * (one player per section, ADR 0004). Empty when the world is full.
+ */
+export function openSections(taken: readonly (string | null)[]): RegionId[] {
+  return REGION_IDS.filter((id) => REGIONS[id].reachable && !taken.includes(id));
+}
+
+/** The section the first player of a world started in, before sections were shared. */
 export const STARTING_REGION: RegionId = "heartland";
+/** Where a new player stands in their home section. */
 export const SPAWN_POINT = { x: 10, y: 10 } as const;

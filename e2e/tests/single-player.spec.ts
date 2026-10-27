@@ -1,6 +1,9 @@
 import { randomUUID } from "node:crypto";
 import { expect, type Page, test } from "@playwright/test";
 import { serverURL } from "../playwright.config.ts";
+import { deletePlayers, rememberPlayer } from "./cleanup.ts";
+
+test.afterEach(deletePlayers);
 
 // Must match apps/client/src/game/createGame.ts and shared REGIONS.heartland.
 const TILE = 32;
@@ -46,6 +49,7 @@ async function signUp(page: Page) {
     password: "correct horse battery",
     name: `E2e${id}`,
   };
+  rememberPlayer(player.email);
   await page.goto("/");
   await page.getByRole("tab", { name: "Sign up" }).click();
   await page.getByLabel("Email").fill(player.email);

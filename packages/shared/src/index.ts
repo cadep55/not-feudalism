@@ -15,6 +15,7 @@ export {
   STARTING_HOUSE,
   STARTING_STOREHOUSE,
   STOREHOUSE_LIMIT,
+  startingBuildings,
 } from "./data/buildings.ts";
 export {
   FIELD_GROW_MS,
@@ -52,6 +53,7 @@ export {
   inRect,
   isRegionId,
   isWater,
+  openSections,
   REGION_IDS,
   REGIONS,
   type Rect,

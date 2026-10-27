@@ -8,6 +8,7 @@ import {
   inRect,
   isRegionId,
   isWater,
+  openSections,
   REGION_IDS,
   REGIONS,
   SECTION_SIZE,
@@ -72,6 +73,16 @@ describe("the world's sections", () => {
     expect(isWater("north_isle", { x: 12, y: 1 })).toBe(true);
     expect(isWater("north_isle", { x: 12, y: 17 })).toBe(false);
     expect(isWater("atlantis", { x: 0, y: 0 })).toBe(false);
+  });
+});
+
+describe("open sections", () => {
+  it("offers only reachable sections nobody calls home", () => {
+    expect(openSections([])).toHaveLength(8);
+    expect(openSections([])).not.toContain("north_isle");
+    expect(openSections(["heartland", null])).not.toContain("heartland");
+    const all = REGION_IDS.filter((id) => REGIONS[id].reachable);
+    expect(openSections(all)).toEqual([]);
   });
 });
 

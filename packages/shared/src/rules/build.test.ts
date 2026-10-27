@@ -39,6 +39,7 @@ function state(overrides: Partial<GameState> = {}, inventory: Inventory = {}): G
       rank: "peasant",
       gold: 0,
       region: "heartland",
+      homeRegion: "heartland",
       x: 10,
       y: 10,
       movedAt: 0,
@@ -169,6 +170,15 @@ describe("building", () => {
     expect(startBuild(state({}, rich), "house", 17, 8, NOW)).toEqual({
       ok: false,
       reason: "cannot_build_here",
+    });
+  });
+
+  it("only in the character's own section", () => {
+    const visiting = state({}, { wood: 5 });
+    visiting.character = { ...visiting.character, region: "north" };
+    expect(startBuild(visiting, "house", OPEN.x, OPEN.y, NOW)).toEqual({
+      ok: false,
+      reason: "not_your_section",
     });
   });
 

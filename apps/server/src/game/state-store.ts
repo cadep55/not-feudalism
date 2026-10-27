@@ -78,6 +78,8 @@ export async function loadStateForUpdate(db: DbExecutor, characterId: string): P
       rank: row.rank,
       gold: row.gold,
       region: row.region,
+      // Only characters with a section reach here (see requireSection in routes.ts).
+      homeRegion: row.homeRegion ?? row.region,
       x: row.x,
       y: row.y,
       movedAt: row.movedAt.getTime(),

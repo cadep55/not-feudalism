@@ -33,9 +33,18 @@ All data lives in `packages/shared/src/data/world.ts` (`REGIONS`, `CONNECTIONS`,
 
 The section names, the coastline and island shapes, and where resources stand are placeholders (`TODO(design)`).
 
+## Joining
+
+- Sign-up joins the **main world** and gives the player a **random free reachable section** as their home (`characters.home_region`). The world row is locked while picking, so two sign-ups can't take the same section, and a unique index backs that up.
+- The starting base (storehouse, house, field, spawn point) is placed in that section at the same spots in every section.
+- When no reachable section is free, sign-up is refused: "The world is full" (`world_full`). That is how the 11th player waits for now; until boats exist the island stays empty, so the world fills at 8.
+- Players build and plant only in their **home section** (`not_your_section`); allies building in each other's sections comes with teams (#55).
+- A character without a section (only possible for characters made before sections were shared) is told the world is full when loading the game. When sections arrived, the oldest character kept heartland and any others waited.
+
+**Tests:** integration tests sign up with `TEST_WORLD` (`apps/server/src/test-world.ts`): a brand-new world per sign-up, starting in heartland. The e2e tests play in the dev server's main world and delete the players they create after each test (`e2e/tests/cleanup.ts`).
+
 ## Not yet
 
-- Joining the shared world, one section per player (#51)
 - Travel between sections (#52)
 - The world view (#53)
 - Boats and docks (#48)

@@ -2,6 +2,7 @@ import {
   atStorehouse,
   type BuildingKind,
   type Direction,
+  type FailureReason,
   type GameState,
   type ItemId,
   isRegionId,
@@ -42,7 +43,10 @@ type Props = {
   onLogOut: () => void;
 };
 
-type Load = { status: "loading" } | { status: "error" } | { status: "ready"; state: GameState };
+type Load =
+  | { status: "loading" }
+  | { status: "error"; reason: FailureReason | "network_error" }
+  | { status: "ready"; state: GameState };
 
 export function GameScreen({ api, player, onLogOut }: Props) {
   const [load, setLoad] = useState<Load>({ status: "loading" });
@@ -59,7 +63,7 @@ export function GameScreen({ api, player, onLogOut }: Props) {
     api.getState().then((result) => {
       if (cancelled) return;
       if (result.ok) showState(result.value);
-      else setLoad({ status: "error" });
+      else setLoad({ status: "error", reason: result.reason });
     });
     return () => {
       cancelled = true;
@@ -295,7 +299,7 @@ export function GameScreen({ api, player, onLogOut }: Props) {
       {load.status === "loading" && <p className="status">Loading your world…</p>}
       {load.status === "error" && (
         <p role="alert" className="status error">
-          {FAILURE_MESSAGES.network_error}
+          {FAILURE_MESSAGES[load.reason]}
         </p>
       )}
       {load.status === "ready" && (
