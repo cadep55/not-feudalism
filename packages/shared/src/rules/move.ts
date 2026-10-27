@@ -1,5 +1,5 @@
 import { MOVE_SLACK_TILES, WALK_SPEED_TILES_PER_SECOND } from "../data/movement.ts";
-import { isRegionId, REGIONS } from "../data/world.ts";
+import { isRegionId, isWater, REGIONS } from "../data/world.ts";
 import { directionBetween } from "../game/direction.ts";
 import type { CharacterState } from "../game/state.ts";
 import type { MoveTo } from "../protocol/messages.ts";
@@ -19,18 +19,19 @@ export function maxWalkTiles(elapsedMs: number): number {
 
 /**
  * Moves a character to a tile in its current region, if it could have walked
- * there since its last move. `now` is milliseconds since the epoch.
+ * there since its last move and it isn't water. `now` is milliseconds since the epoch.
  */
 export function moveTo(
   character: CharacterState,
   target: MoveTo,
   now: number,
-): RuleResult<CharacterState, "out_of_bounds" | "moved_too_fast"> {
+): RuleResult<CharacterState, "out_of_bounds" | "moved_too_fast" | "water"> {
   if (!isRegionId(character.region)) {
     throw new Error(`Character ${character.id} is in unknown region "${character.region}"`);
   }
   const region = REGIONS[character.region];
   if (target.x >= region.width || target.y >= region.height) return fail("out_of_bounds");
+  if (isWater(character.region, target)) return fail("water");
   if (tileDistance(character, target) > maxWalkTiles(now - character.movedAt)) {
     return fail("moved_too_fast");
   }

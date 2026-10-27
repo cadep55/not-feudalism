@@ -94,6 +94,8 @@ describe("blocked tiles", () => {
     expect(isBlocked(buildings, "heartland", rock)).toBe(true);
     expect(isBlocked(buildings, "heartland", { x: 10, y: 10 })).toBe(false);
     expect(isBlocked(buildings, "nowhere", { x: 10, y: 10 })).toBe(true);
+    expect(isBlocked([], "east_coast", { x: 20, y: 10 })).toBe(true);
+    expect(isBlocked([], "east_coast", { x: 18, y: 10 })).toBe(false);
   });
 
   it("puts a house's door just below it", () => {

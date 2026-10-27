@@ -5,10 +5,11 @@ import {
   GATHER_YIELD,
   isNodeId,
   NODE_IDS,
+  nodeYielding,
   RESOURCE_NODES,
   type ResourceNode,
 } from "./resources.ts";
-import { REGIONS, SPAWN_POINT } from "./world.ts";
+import { isWater, REGION_IDS, REGIONS, SPAWN_POINT, STARTING_REGION } from "./world.ts";
 
 describe("item data", () => {
   it("gives every item a unique name", () => {
@@ -33,15 +34,30 @@ describe("resource node data", () => {
     expect(node.y).toBeLessThan(region.height);
   });
 
-  it("keeps nodes off the spawn point and off each other", () => {
-    const spots = NODE_IDS.map((id) => `${RESOURCE_NODES[id].x},${RESOURCE_NODES[id].y}`);
+  it("keeps nodes off the spawn point, off each other, off water and away from the shore", () => {
+    const spots = NODE_IDS.map((id) => {
+      const node = RESOURCE_NODES[id];
+      return `${node.region}:${node.x},${node.y}`;
+    });
     expect(new Set(spots).size).toBe(spots.length);
-    expect(spots).not.toContain(`${SPAWN_POINT.x},${SPAWN_POINT.y}`);
+    expect(spots).not.toContain(`${STARTING_REGION}:${SPAWN_POINT.x},${SPAWN_POINT.y}`);
+    for (const id of NODE_IDS) {
+      const node = RESOURCE_NODES[id];
+      // Water on any side would leave fewer places to stand and gather.
+      for (let dy = -1; dy <= 1; dy++) {
+        for (let dx = -1; dx <= 1; dx++) {
+          expect(isWater(node.region, { x: node.x + dx, y: node.y + dy })).toBe(false);
+        }
+      }
+    }
   });
 
-  it("has one node for each gathered resource (wheat comes from fields)", () => {
-    const yields = NODE_IDS.map((id) => RESOURCE_NODES[id].yields).sort();
-    expect(yields).toEqual(["stone", "wood"]);
+  it.each(REGION_IDS)("%s has one tree for wood and one rock for stone", (region) => {
+    const here = NODE_IDS.filter((id) => RESOURCE_NODES[id].region === region);
+    expect(here.map((id) => RESOURCE_NODES[id].yields).sort()).toEqual(["stone", "wood"]);
+    expect(nodeYielding(region, "wood")).toBe(`${region}_tree`);
+    expect(nodeYielding(region, "stone")).toBe(`${region}_rock`);
+    expect(nodeYielding(region, "wheat")).toBeNull();
   });
 
   it("recognises node IDs", () => {

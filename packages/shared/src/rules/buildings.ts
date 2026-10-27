@@ -1,6 +1,6 @@
 import { type Building, type BuildingKind, covers, footprint } from "../data/buildings.ts";
 import { RESOURCE_NODES } from "../data/resources.ts";
-import { isRegionId, REGIONS } from "../data/world.ts";
+import { isRegionId, isWater, REGIONS } from "../data/world.ts";
 import { tileInFront } from "../game/direction.ts";
 import type { GameState } from "../game/state.ts";
 import { tileDistance } from "./move.ts";
@@ -50,12 +50,12 @@ export function storehousesByDistance(
     .map(({ b }) => b);
 }
 
-/** True when nobody can stand on the tile: off the map, a building, or a resource node. */
+/** True when nobody can stand on the tile: off the map, water, a building, or a resource node. */
 export function isBlocked(buildings: Building[], region: string, tile: Tile): boolean {
   if (!isRegionId(region)) return true;
   const size = REGIONS[region];
   if (tile.x < 0 || tile.y < 0 || tile.x >= size.width || tile.y >= size.height) return true;
-  if (buildingAt(buildings, region, tile)) return true;
+  if (isWater(region, tile) || buildingAt(buildings, region, tile)) return true;
   return Object.values(RESOURCE_NODES).some(
     (n) => n.region === region && n.x === tile.x && n.y === tile.y,
   );

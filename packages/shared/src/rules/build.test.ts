@@ -73,6 +73,13 @@ describe("placement", () => {
     expect(placementBlocked(state(), "house", OPEN.x, OPEN.y)).toBeNull();
   });
 
+  it("needs the footprint and its ring clear of water", () => {
+    const coast = state({ character: { ...state().character, region: "east_coast" } });
+    // Columns 19 and up are sea: a house at x 17 has its ring in the water.
+    expect(placementBlocked(coast, "house", 17, 8)).toBe("cannot_build_here");
+    expect(placementBlocked(coast, "house", 16, 13)).toBeNull();
+  });
+
   it("refuses off the map, or against its edge", () => {
     expect(placementBlocked(state(), "house", 24, 5)).toBe("out_of_bounds");
     expect(placementBlocked(state(), "house", 5, 17)).toBe("out_of_bounds");

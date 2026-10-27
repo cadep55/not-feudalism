@@ -1,4 +1,11 @@
-import { type Building, covers, type Direction, tileDistance, tileInFront } from "@nf/shared";
+import {
+  type Building,
+  covers,
+  type Direction,
+  isWater,
+  tileDistance,
+  tileInFront,
+} from "@nf/shared";
 import { nodeAt } from "./gathering.ts";
 import type { RegionSize, Tile } from "./movement.ts";
 
@@ -74,8 +81,8 @@ export function turnTowardBuilding(
 
 /**
  * Where to stand to use a building: `from` itself when already beside it,
- * otherwise the closest tile around the footprint (on the map, not a node or
- * another building). Never a tile inside the footprint. Ties prefer the sides
+ * otherwise the closest tile around the footprint (on the map, not water, a
+ * node or another building). Never a tile inside the footprint. Ties prefer the sides
  * over the corners, then the straighter approach. Null when no tile is free.
  */
 export function approachTile(
@@ -91,7 +98,10 @@ export function approachTile(
       const tile = { x, y };
       if (!isBeside(tile, building)) continue;
       const onMap = x >= 0 && y >= 0 && x < region.width && y < region.height;
-      const taken = nodeAt(tile, building.region) || buildingAt(buildings, tile, building.region);
+      const taken =
+        isWater(building.region, tile) ||
+        nodeAt(tile, building.region) ||
+        buildingAt(buildings, tile, building.region);
       if (!onMap || taken) continue;
       const steps = tileDistance(from, tile);
       const corner = facingToward(tile, building)?.length === 2;

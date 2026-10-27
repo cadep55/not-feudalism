@@ -17,6 +17,7 @@ import { describe, expect, it } from "vitest";
 import { ALICE_STATE } from "../test-helpers.ts";
 import { JOB_SETTLE_MS } from "./gathering.ts";
 import {
+  canWanderTo,
   MIN_VILLAGER_REFRESH_MS,
   nextVillagerRefresh,
   pickWanderTile,
@@ -114,6 +115,13 @@ describe("pickWanderTile", () => {
         DOOR,
       ),
     ).toBeLessThanOrEqual(WANDER_RADIUS);
+  });
+});
+
+describe("canWanderTo", () => {
+  it("keeps idle villagers out of water", () => {
+    expect(canWanderTo({ x: 20, y: 9 }, REGION, "east_coast", [])).toBe(false);
+    expect(canWanderTo({ x: 18, y: 9 }, REGION, "east_coast", [])).toBe(true);
   });
 });
 
