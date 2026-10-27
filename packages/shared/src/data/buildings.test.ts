@@ -44,6 +44,7 @@ describe("building data", () => {
     }
     for (const id of NODE_IDS) {
       const node = RESOURCE_NODES[id];
+      if (node.region !== STARTING_STOREHOUSE.region) continue;
       for (let dy = -1; dy <= 1; dy++) {
         for (let dx = -1; dx <= 1; dx++)
           expect(taken.has(`${node.x + dx},${node.y + dy}`)).toBe(false);

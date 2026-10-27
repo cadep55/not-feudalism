@@ -2,6 +2,7 @@ import {
   type Building,
   deliveriesBy,
   type GameState,
+  isWater,
   RESOURCE_NODES,
   taskTarget,
   taskTimeline,
@@ -77,7 +78,7 @@ export function nextVillagerRefresh(state: GameState, now: number): number | nul
   return Math.max(soonest + JOB_SETTLE_MS - now, MIN_VILLAGER_REFRESH_MS);
 }
 
-/** Whether an idle villager may stand on a tile: on the map, not a building or a resource node. */
+/** Whether an idle villager may stand on a tile: on the map, not water, a building or a resource node. */
 export function canWanderTo(
   tile: Tile,
   region: RegionSize,
@@ -85,7 +86,12 @@ export function canWanderTo(
   buildings: readonly Building[],
 ): boolean {
   const onMap = tile.x >= 0 && tile.y >= 0 && tile.x < region.width && tile.y < region.height;
-  return onMap && !buildingAt(buildings, tile, regionId) && !nodeAt(tile, regionId);
+  return (
+    onMap &&
+    !isWater(regionId, tile) &&
+    !buildingAt(buildings, tile, regionId) &&
+    !nodeAt(tile, regionId)
+  );
 }
 
 /** Where an idle villager wanders: around its house's door, steering clear of buildings. */

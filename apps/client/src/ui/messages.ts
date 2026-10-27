@@ -11,6 +11,7 @@ export const FAILURE_MESSAGES: Record<FailureReason | "network_error", string> =
   rate_limited: "Too many attempts. Please wait a few minutes.",
   out_of_bounds: "You can't go there.",
   moved_too_fast: "Slow down! You can't walk that fast.",
+  water: "You can't walk into water. Boats come later.",
   too_far_away: "Get closer to gather.",
   not_facing: "Face it to gather.",
   busy: "You're busy with another job.",

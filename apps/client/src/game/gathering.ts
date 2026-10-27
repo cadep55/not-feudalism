@@ -1,4 +1,4 @@
-import { type Job, NODE_IDS, type NodeId, RESOURCE_NODES, tileDistance } from "@nf/shared";
+import { isWater, type Job, NODE_IDS, type NodeId, RESOURCE_NODES, tileDistance } from "@nf/shared";
 import type { RegionSize, Tile } from "./movement.ts";
 
 /** Something on one tile of a region that the character stands next to and works: a node or a field. */
@@ -33,8 +33,8 @@ export function isNextTo(tile: Tile, node: Tile): boolean {
 
 /**
  * Where to stand to gather at `node`: `from` itself when already next to it,
- * otherwise the closest free tile around the node (on the map and not another
- * node), so standing on the node means stepping off it. Never the node's own
+ * otherwise the closest free tile around the node (on the map, not water and
+ * not another node), so standing on the node means stepping off it. Never the node's own
  * tile. Ties prefer the straighter approach. Null when no tile is free.
  */
 export function nearestAdjacentTile(from: Tile, node: Spot, region: RegionSize): Tile | null {
@@ -45,7 +45,7 @@ export function nearestAdjacentTile(from: Tile, node: Spot, region: RegionSize):
       if (dx === 0 && dy === 0) continue;
       const tile = { x: node.x + dx, y: node.y + dy };
       const onMap = tile.x >= 0 && tile.y >= 0 && tile.x < region.width && tile.y < region.height;
-      if (!onMap || nodeAt(tile, node.region) !== null) continue;
+      if (!onMap || isWater(node.region, tile) || nodeAt(tile, node.region) !== null) continue;
       const steps = tileDistance(from, tile);
       const straightLine = (tile.x - from.x) ** 2 + (tile.y - from.y) ** 2;
       // Fewest steps first; the straight-line distance only breaks ties.

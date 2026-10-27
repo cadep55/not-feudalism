@@ -187,6 +187,13 @@ describe("planting", () => {
     }
   });
 
+  it("can't be planted in water", () => {
+    const coast = state(OPEN, {}, []);
+    const onCoast = { ...coast, character: { ...coast.character, region: "east_coast" } };
+    expect(plantingBlocked(onCoast, { x: 21, y: 9 })).toBe("cannot_plant_here");
+    expect(plantingBlocked(onCoast, { x: 20, y: 9 })).toBeNull();
+  });
+
   it("can't be harvested until grown", () => {
     const planted = plantSeed(state(OPEN, { wheat_seeds: 1, rake: 1 }, []), NOW);
     if (!planted.ok) throw new Error("setup failed");

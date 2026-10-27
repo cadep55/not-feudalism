@@ -1,6 +1,6 @@
 import { type Building, footprint, STOREHOUSE_LIMIT } from "../data/buildings.ts";
 import type { ItemId } from "../data/items.ts";
-import { RESOURCE_NODES } from "../data/resources.ts";
+import { nodeYielding, RESOURCE_NODES } from "../data/resources.ts";
 import {
   VILLAGER_GATHER_MS,
   VILLAGER_LOAD,
@@ -280,7 +280,9 @@ export function assignVillager(
       : state.storage;
   let task: VillagerTask | null = null;
   if (job === "wood" || job === "stone") {
-    const nodeId = job === "wood" ? "heartland_tree" : "heartland_rock";
+    // The tree or rock in the villager's home section.
+    const nodeId = nodeYielding(house.region, job);
+    if (!nodeId) throw new Error(`Section ${house.region} has no node for ${job}`);
     const node = RESOURCE_NODES[nodeId];
     const storehouseId = nearestStorehouse(state, node.region, node).id;
     task = { kind: "gather", nodeId, storehouseId, since: now, delivered: 0 };

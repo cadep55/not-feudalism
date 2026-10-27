@@ -327,6 +327,19 @@ describe("assigning", () => {
     expect(farming.ok && farming.value.storage[north.id]).toEqual({});
   });
 
+  it("gathers from the tree or rock in the villager's own section", () => {
+    const westHouse: Building = { ...house, id: "west_house", region: "west" };
+    const westStore: Building = { ...store, id: "west_store", region: "west" };
+    const s = state([{ ...villager(), houseId: westHouse.id }], {}, [FIELD], {
+      buildings: [westHouse, westStore],
+    });
+    const result = assignVillager(s, "v1", "wood", T0);
+    expect(result.ok && result.value.villagers[0]?.task).toMatchObject({
+      nodeId: "west_tree",
+      storehouseId: westStore.id,
+    });
+  });
+
   it("refuses an unknown villager, or one whose house is gone", () => {
     expect(assignVillager(state([{ ...villager(), houseId: "gone" }]), "v1", "wood", T0)).toEqual({
       ok: false,

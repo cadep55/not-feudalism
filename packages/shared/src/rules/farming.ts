@@ -6,7 +6,7 @@ import {
   SEED_EVERY,
 } from "../data/farming.ts";
 import { RESOURCE_NODES } from "../data/resources.ts";
-import { isRegionId, REGIONS } from "../data/world.ts";
+import { isRegionId, isWater, REGIONS } from "../data/world.ts";
 import { directionBetween, tileInFront } from "../game/direction.ts";
 import type { Field, GameState } from "../game/state.ts";
 import { fail, ok, type RuleResult } from "../result.ts";
@@ -125,7 +125,7 @@ export function plantingBlocked(
   );
   const onBuilding = buildingAt(state.buildings, region, tile) !== null;
   const onField = state.fields.some((f) => f.region === region && f.x === tile.x && f.y === tile.y);
-  return onNode || onBuilding || onField ? "cannot_plant_here" : null;
+  return onNode || onBuilding || onField || isWater(region, tile) ? "cannot_plant_here" : null;
 }
 
 /** Plants one wheat seed on the free grass tile in front of the character. */

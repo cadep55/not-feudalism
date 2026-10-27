@@ -14,6 +14,7 @@ import { assignVillager, settleVillagers } from "./villagers.ts";
 export type ActionFailure =
   | "out_of_bounds"
   | "moved_too_fast"
+  | "water"
   | "too_far_away"
   | "not_facing"
   | "busy"

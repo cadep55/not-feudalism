@@ -13,7 +13,7 @@ import {
 import type { ItemId } from "../data/items.ts";
 import { RESOURCE_NODES } from "../data/resources.ts";
 import { VILLAGER_NAMES, VILLAGERS_PER_HOUSE } from "../data/villagers.ts";
-import { isRegionId, REGIONS } from "../data/world.ts";
+import { isRegionId, isWater, REGIONS } from "../data/world.ts";
 import type { CharacterState, GameState, Inventory, Villager } from "../game/state.ts";
 import { fail, ok, type RuleResult } from "../result.ts";
 import { buildingAt, buildingsOf, storehousesByDistance } from "./buildings.ts";
@@ -65,6 +65,7 @@ export function placementBlocked(
   const { width, height } = BUILDING_SIZES[kind];
   if (x < 0 || y < 0 || x + width > map.width || y + height > map.height) return "out_of_bounds";
   // The clear ring has to fit on the map too: no building against the edge.
+  // Water counts as taken, in the footprint and the ring.
   if (x < 1 || y < 1 || x + width + 1 > map.width || y + height + 1 > map.height) {
     return "cannot_build_here";
   }
@@ -76,7 +77,7 @@ export function placementBlocked(
         (n) => n.region === region && n.x === tx && n.y === ty,
       );
       const onField = state.fields.some((f) => f.region === region && f.x === tx && f.y === ty);
-      if (onNode || onField) return "cannot_build_here";
+      if (onNode || onField || isWater(region, tile)) return "cannot_build_here";
     }
   }
   if (covers({ id: "", region, kind, x, y, width, height }, state.character)) {

@@ -7,6 +7,7 @@ import {
   type Field,
   houseDoor,
   isRegionId,
+  isWater,
   type Job,
   type NodeId,
   placementBlocked,
@@ -220,9 +221,12 @@ class WorldScene extends Phaser.Scene {
 
   create() {
     const grid = this.add.graphics();
+    const { region } = this.options.character;
     for (let y = 0; y < this.region.height; y++) {
       for (let x = 0; x < this.region.width; x++) {
-        grid.fillStyle((x + y) % 2 === 0 ? 0x4a7a3a : 0x52863f, 1);
+        const checker = (x + y) % 2 === 0;
+        const water = isWater(region, { x, y });
+        grid.fillStyle(water ? (checker ? 0x2f6a9e : 0x3474a8) : checker ? 0x4a7a3a : 0x52863f, 1);
         grid.fillRect(x * TILE, y * TILE, TILE, TILE);
       }
     }
@@ -348,7 +352,11 @@ class WorldScene extends Phaser.Scene {
             this.region,
           )
         : this.destination && stepToward(this.position, this.destination);
-      if (next && !samePlace(next, this.position)) this.stepTo(next);
+      if (next && isWater(this.options.character.region, next)) {
+        // The shore: stop here rather than walk into the water (the server would refuse it).
+        this.destination = null;
+        this.target = null;
+      } else if (next && !samePlace(next, this.position)) this.stepTo(next);
       else if (this.destination && samePlace(this.destination, this.position))
         this.destination = null;
     }

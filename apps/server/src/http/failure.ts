@@ -27,6 +27,7 @@ const STATUS: Record<FailureReason, number> = {
   storehouse_not_empty: 422,
   no_room_for_refund: 422,
   moved_too_fast: 422,
+  water: 422,
   too_far_away: 422,
   not_facing: 422,
   busy: 409,

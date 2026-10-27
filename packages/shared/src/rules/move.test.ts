@@ -44,6 +44,12 @@ describe("maxWalkTiles", () => {
 });
 
 describe("moveTo", () => {
+  it("refuses to walk into water, and allows the shore", () => {
+    const onCoast = character({ region: "east_coast", x: 19, y: 8 });
+    expect(moveTo(onCoast, { x: 21, y: 8 }, LATER)).toEqual({ ok: false, reason: "water" });
+    expect(moveTo(onCoast, { x: 20, y: 8 }, LATER).ok).toBe(true);
+  });
+
   it("moves to any tile inside the region, corners included, and records the time", () => {
     expect(moveTo(character(), { x: 0, y: 0 }, LATER)).toEqual({
       ok: true,

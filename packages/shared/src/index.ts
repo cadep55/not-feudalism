@@ -33,6 +33,7 @@ export {
   isNodeId,
   NODE_IDS,
   type NodeId,
+  nodeYielding,
   RESOURCE_NODES,
   type ResourceNode,
 } from "./data/resources.ts";
@@ -47,11 +48,22 @@ export {
   WANDER_RADIUS,
 } from "./data/villagers.ts";
 export {
+  CONNECTIONS,
+  inRect,
   isRegionId,
+  isWater,
+  REGION_IDS,
   REGIONS,
+  type Rect,
   type RegionId,
+  SECTION_SIZE,
+  type Section,
+  type Side,
   SPAWN_POINT,
   STARTING_REGION,
+  TRAVEL_ZONE_TILES,
+  type TravelZone,
+  travelZonesIn,
 } from "./data/world.ts";
 export {
   DEFAULT_FACING,
