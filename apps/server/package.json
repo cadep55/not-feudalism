@@ -15,7 +15,7 @@
     "test:integration": "vitest run int.test"
   },
   "dependencies": {
-    "@colyseus/core": "0.18.18",
+    "@colyseus/core": "0.18.23",
     "@colyseus/ws-transport": "0.18.4",
     "@nf/db": "workspace:*",
     "@nf/shared": "workspace:*",
@@ -28,7 +28,7 @@
     "helmet": "8.3.0",
     "pino": "10.4.0",
     "pino-http": "11.0.0",
-    "zod": "4.6.5"
+    "zod": "4.6.7"
   },
   "devDependencies": {
     "@nf/config": "workspace:*",
